@@ -1,0 +1,226 @@
+---
+title: "Examples"
+description: "Real-world XcodeGen project specs from open source projects"
+---
+
+The following open source projects use XcodeGen to manage their Xcode project files. Browsing their `project.yml` specs is one of the best ways to learn how to structure your own configuration.
+
+<CardGroup cols={2}>
+  <Card
+    title="Bitrise-iOS"
+    icon="github"
+    href="https://github.com/toshi0383/Bitrise-iOS/blob/master/project.yml"
+  >
+    A full iOS app spec by toshi0383 demonstrating targets, schemes, and CocoaPods integration.
+  </Card>
+  <Card
+    title="swift-models"
+    icon="github"
+    href="https://github.com/johndpope/swift-models/tree/stable/Inference"
+  >
+    Machine learning models in Swift, showing how to structure framework and app targets together.
+  </Card>
+  <Card
+    title="AppRepositoryTemplate"
+    icon="github"
+    href="https://github.com/atelier-socle/AppRepositoryTemplate/blob/master/project.yml"
+  >
+    A reusable iOS app project template from atelier-socle with sensible defaults.
+  </Card>
+  <Card
+    title="FrameworkRepositoryTemplate"
+    icon="github"
+    href="https://github.com/atelier-socle/FrameworkRepositoryTemplate/blob/master/project.yml"
+  >
+    A reusable Swift framework template including tests and CI configuration.
+  </Card>
+  <Card
+    title="XcodeGen-TestStickers"
+    icon="github"
+    href="https://github.com/scelis/XcodeGen-TestStickers/blob/master/project.yml"
+  >
+    A sticker pack app demonstrating iMessage extension targets alongside the main app.
+  </Card>
+  <Card
+    title="nl-covid19-notification-app-ios"
+    icon="github"
+    href="https://github.com/minvws/nl-covid19-notification-app-ios/blob/master/project.yml"
+  >
+    The official Dutch COVID-19 contact tracing app, a large real-world iOS project.
+  </Card>
+  <Card
+    title="react-native-xcodegen"
+    icon="github"
+    href="https://github.com/pvinis/react-native-xcodegen/blob/master/templates"
+  >
+    Templates for generating Xcode projects in a React Native context.
+  </Card>
+  <Card
+    title="eRouška iOS"
+    icon="github"
+    href="https://github.com/covid19cz/erouska-ios/blob/develop/project.yml"
+  >
+    The Czech Republic contact tracing app, featuring multiple targets and build configurations.
+  </Card>
+  <Card
+    title="hotreloading-vscode-ios"
+    icon="github"
+    href="https://github.com/markst/hotreloading-vscode-ios"
+  >
+    An iOS project with hot-reloading support, showing custom build phase scripting.
+  </Card>
+  <Card
+    title="MultiPlatformApp"
+    icon="github"
+    href="https://github.com/hgq287/HGSwift/tree/master/Examples/MultiPlatformApp"
+  >
+    A modern SwiftUI multi-platform (iOS & macOS) example with a modular 3-tier architecture and shared logic.
+  </Card>
+</CardGroup>
+
+---
+
+## Common Spec Patterns
+
+The annotated examples below cover the most frequently used XcodeGen configurations.
+
+### Multi-target app with a local framework
+
+A typical setup where an iOS app links against a locally defined Swift framework, both sharing the same build settings.
+
+```yaml
+name: MyApp
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    iOS: "16.0"
+
+configs:
+  Debug: debug
+  Release: release
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+
+targets:
+  # The main application target
+  MyApp:
+    type: application
+    platform: iOS
+    sources:
+      - App
+    dependencies:
+      - target: MyFramework   # Link the local framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.myapp
+        DEVELOPMENT_TEAM: XXXXXXXXXX
+
+  # A reusable framework bundled alongside the app
+  MyFramework:
+    type: framework
+    platform: iOS
+    sources:
+      - MyFramework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.myframework
+
+  # Unit tests for the framework
+  MyFrameworkTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - MyFrameworkTests
+    dependencies:
+      - target: MyFramework
+```
+
+### App with Swift Package dependencies
+
+Declaring both remote and local Swift Package Manager dependencies at the project level and linking them to targets.
+
+```yaml
+name: MyApp
+
+packages:
+  # Remote package pinned to a version range
+  Alamofire:
+    url: https://github.com/Alamofire/Alamofire
+    from: "5.8.0"
+
+  # Remote package pinned to an exact version
+  SnapshotTesting:
+    url: https://github.com/pointfreeco/swift-snapshot-testing
+    exactVersion: "1.15.4"
+
+  # Local package at a path relative to the project root
+  MyLocalPackage:
+    path: ../MyLocalPackage
+
+targets:
+  MyApp:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+    dependencies:
+      - package: Alamofire        # Links Alamofire product
+      - package: MyLocalPackage   # Links the local package
+
+  MyAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests
+    dependencies:
+      - target: MyApp
+      - package: SnapshotTesting
+        product: SnapshotTesting  # Specify the product name when ambiguous
+```
+
+### Multi-platform framework
+
+A framework that compiles for both iOS and macOS by leveraging `supportedDestinations`, sharing one target definition.
+
+```yaml
+name: CrossPlatformKit
+options:
+  bundleIdPrefix: com.example
+
+targets:
+  CrossPlatformKit:
+    type: framework
+    # Use 'auto' platform with supportedDestinations for multi-platform targets
+    platform: auto
+    supportedDestinations:
+      - iOS
+      - macOS
+    sources:
+      - Sources/CrossPlatformKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.crossplatformkit
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+
+  CrossPlatformKitTests:
+    type: bundle.unit-test
+    platform: auto
+    supportedDestinations:
+      - iOS
+      - macOS
+    sources:
+      - Tests/CrossPlatformKitTests
+    dependencies:
+      - target: CrossPlatformKit
+```
+
+---
+
+<Note>
+  Have a project using XcodeGen? Add it to this list by submitting a pull request to the [XcodeGen repository](https://github.com/yonaskolb/XcodeGen) and editing `Docs/Examples.md`.
+</Note>

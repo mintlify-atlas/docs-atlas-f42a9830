@@ -1,0 +1,177 @@
+---
+title: "Managing dependencies"
+description: "Integrate CocoaPods, Carthage, Swift packages, SDK frameworks, and local frameworks"
+---
+
+Each target can declare one or more dependencies. XcodeGen supports several dependency types to cover common integration patterns.
+
+## CocoaPods
+
+Use your `Podfile` as normal. Pod targets do not need to be referenced in `project.yml`. After generating the project, run `pod install` to integrate CocoaPods and create a workspace.
+
+<Tip>
+Use `--use-cache` together with the `postGenCommand` option so that `pod install` only runs when the project is actually regenerated:
+
+```yaml
+options:
+  postGenCommand: pod install
+```
+
+Then generate with:
+
+```bash
+xcodegen generate --use-cache
+```
+</Tip>
+
+## Carthage
+
+XcodeGen handles Carthage integration automatically. Declare Carthage dependencies in your target and XcodeGen links and embeds the frameworks, and generates the required `carthage copy-frameworks` build phase.
+
+```yaml
+targets:
+  App:
+    dependencies:
+      - target: Framework
+      - carthage: Kingfisher
+  Framework:
+    dependencies:
+      - carthage: Alamofire
+```
+
+### Multiple frameworks from one dependency
+
+Some Carthage dependencies vend more than one framework. By default, each framework must be listed individually:
+
+```yaml
+targets:
+  App:
+    dependencies:
+      - carthage: ReactiveCocoa
+      - carthage: ReactiveMapKit
+```
+
+### Automatic framework discovery
+
+Enable `findCarthageFrameworks` to let XcodeGen locate all frameworks for a dependency automatically by reading the `.version` files Carthage writes to `Carthage/Build`. The dependency name must match the name of its `.version` file.
+
+<Note>
+Carthage dependencies must already be built before running XcodeGen when `findCarthageFrameworks` is enabled, because XcodeGen reads the `.version` files at generation time.
+</Note>
+
+```yaml
+options:
+  findCarthageFrameworks: true
+targets:
+  App:
+    dependencies:
+      - carthage: ReactiveCocoa  # also finds ReactiveMapKit automatically
+      - carthage: OtherDependency
+        findFrameworks: false    # override the global option per dependency
+```
+
+### Custom Carthage paths
+
+Change the directory where XcodeGen looks for built frameworks with `carthageBuildPath`:
+
+```yaml
+options:
+  carthageBuildPath: ../../Carthage/Build
+```
+
+Change the Carthage executable (for example when running via [Mint](https://github.com/yonaskolb/mint)) with `carthageExecutablePath`. This value is prepended to ` copy-frameworks` when generating the build phase script:
+
+```yaml
+options:
+  carthageExecutablePath: mint run Carthage/Carthage
+```
+
+## Swift Packages
+
+Swift packages are declared at the project level and then referenced from targets. Each package can be pinned by version, branch, or resolved to a local path.
+
+```yaml
+packages:
+  Yams:
+    url: https://github.com/jpsim/Yams
+    from: 2.0.0
+  SwiftPM:
+    url: https://github.com/apple/swift-package-manager
+    branch: swift-5.0-branch
+  RxClient:
+    path: ../RxClient
+
+targets:
+  App:
+    dependencies:
+      # the linked product defaults to the package name
+      - package: Yams
+      - package: SwiftPM
+      - package: RxClient
+      - package: SwiftPM
+        product: SPMUtility  # link a specific product when a package vends more than one
+```
+
+When a package vends multiple products you want to link, use `products` to list them together:
+
+```yaml
+targets:
+  App:
+    dependencies:
+      - package: FooFeature
+        products:
+          - FooDomain
+          - FooUI
+```
+
+Local packages are placed into a `Packages` group at the root of the Xcode project by default. Change the group with `options.localPackagesGroup`.
+
+<Note>
+To ensure everyone on your team uses the same package versions, check in the `Package.resolved` file located at:
+
+`ProjectName.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`
+</Note>
+
+## SDK Frameworks
+
+System frameworks and libraries from the SDK can be linked using the `sdk` dependency type. Use `.framework`, `.tbd`, or `.dylib` filenames as appropriate:
+
+```yaml
+targets:
+  App:
+    dependencies:
+      - sdk: Contacts.framework
+      - sdk: libc++.tbd
+      - sdk: libz.dylib
+```
+
+For frameworks located in a non-standard root within the SDK, use the `root` property:
+
+```yaml
+targets:
+  MyTestTarget:
+    dependencies:
+      - sdk: Platforms/iPhoneOS.platform/Developer/Library/Frameworks/XCTest
+        root: DEVELOPER_DIR
+```
+
+## Framework Files
+
+Link prebuilt framework or XCFramework files directly by specifying a path:
+
+```yaml
+targets:
+  App:
+    dependencies:
+      - framework: Vendor/MyFramework.framework
+```
+
+Additional linking options are available for all framework dependencies:
+
+| Option | Type | Description |
+|---|---|---|
+| `embed` | Bool | Embed the framework. Defaults to `true` for app targets. |
+| `link` | Bool | Link the framework. Defaults to `true`. |
+| `codeSign` | Bool | Apply `codeSignOnCopy` when embedding. Defaults to `true`. |
+| `removeHeaders` | Bool | Apply `removeHeadersOnCopy` when embedding. Defaults to `true`. |
+| `weak` | Bool | Link as weak. Defaults to `false`. |

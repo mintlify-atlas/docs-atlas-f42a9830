@@ -1,0 +1,151 @@
+---
+title: "Configuring build settings"
+description: "Use setting presets, setting groups, and xcconfig files to manage Xcode build settings"
+---
+
+Xcode resolves a build setting for a given configuration and target by walking up a hierarchy of levels until it finds a value. You can see this hierarchy in Xcode by enabling the **Levels** option in the **Build Settings** tab. From highest to lowest precedence:
+
+1. Target
+2. Target xcconfig file
+3. Project
+4. Project xcconfig file
+5. SDK defaults
+
+XcodeGen merges settings onto a target or project from several sources, applied in this order:
+
+1. Setting Presets
+2. Setting Groups
+3. `settings.base`
+4. `settings` for a specific config
+
+Values from xcconfig files sit one level above these. As a convenience, any settings defined in an xcconfig file also overwrite settings from Setting Presets.
+
+<Tip>
+Build setting names in XcodeGen must be the exact technical names, not the display names shown by default in Xcode. In the **Build Settings** tab, go to **Editor → Show Setting Titles** to see display names and **Editor → Show Definitions** to see the actual names and values that XcodeGen expects.
+</Tip>
+
+## Setting Presets
+
+XcodeGen applies default build settings to your project and targets in the same way Xcode does when creating a new project or target. Debug and Release settings are applied to the project automatically. Targets also receive default settings depending on the platform and product type.
+
+You can control or disable this behaviour with the `options.settingPresets` option:
+
+| Value | Behaviour |
+|---|---|
+| `all` (default) | Apply both project and target settings |
+| `project` | Apply project settings only |
+| `targets` | Apply target settings only |
+| `none` | Do not apply any automatic settings |
+
+```yaml
+options:
+  settingPresets: none
+```
+
+## Settings
+
+Both `project` and each `target` accept a `settings` object. This can be a flat map of build setting names to values, or a structured object using `base` and `configs` keys.
+
+```yaml
+settings:
+  DEVELOPMENT_TEAM: T45H45J
+targets:
+  App:
+    settings:
+      base:
+        CODE_SIGN_ENTITLEMENTS: App/Entitlements.entitlements
+      configs:
+        Debug:
+          DEBUG_MODE: YES
+        Release:
+          DEBUG_MODE: NO
+```
+
+<Note>
+Do not mix a flat map with `groups`, `base`, or `configs` in the same `settings` block. If those structured keys are present, any top-level flat entries are silently ignored.
+</Note>
+
+When using structured settings, values are merged in this order: `groups`, then `base`, then `configs`.
+
+```yaml
+settings:
+  base:
+    PRODUCT_NAME: MyApp
+  configs:
+    debug:
+      CODE_SIGN_IDENTITY: iPhone Developer
+      PRODUCT_BUNDLE_IDENTIFIER: com.example.app.debug
+    release:
+      CODE_SIGN_IDENTITY: iPhone Distribution
+      PRODUCT_BUNDLE_IDENTIFIER: com.example.app
+      PROVISIONING_PROFILE_SPECIFIER: "MyApp Release"
+  groups:
+    - shared_settings
+```
+
+Config keys are matched case-insensitively and by substring. For example, `staging` would match both `Staging Debug` and `Staging Release`. An exact match takes precedence and won't be applied to partial matches.
+
+## Setting Groups
+
+Setting groups are named, reusable collections of build settings defined at the project level. Each group is itself a full `settings` object, so groups can reference other groups or define settings by config.
+
+```yaml
+settingGroups:
+  app:
+    DEVELOPMENT_TEAM: T45H45J
+  signing_debug:
+    CODE_SIGN_IDENTITY: iPhone Developer
+  signing_release:
+    base:
+      CODE_SIGN_IDENTITY: iPhone Distribution
+  signing_all:
+    groups:
+      - app
+    configs:
+      debug:
+        groups:
+          - signing_debug
+      release:
+        groups:
+          - signing_release
+
+targets:
+  App:
+    settings:
+      groups:
+        - signing_all
+  Framework:
+    settings:
+      groups:
+        - app
+```
+
+## xcconfig Files
+
+Both `project` and each `target` accept a `configFiles` map that links `.xcconfig` files to build configurations. These are applied one level above any inline settings, and they also override Setting Presets.
+
+```yaml
+configFiles:
+  Debug: debug.xcconfig
+  Release: release.xcconfig
+targets:
+  App:
+    configFiles:
+      Debug: App/debug.xcconfig
+      Release: App/release.xcconfig
+```
+
+## Environment Variables in Build Settings
+
+On CI or in local scripts, you can override any build setting by passing it as an environment variable directly to `xcodebuild`:
+
+```bash
+DEVELOPMENT_TEAM=XXXXXXXXX xcodebuild -scheme MyApp -configuration Release
+```
+
+You can also use environment variable substitution inside `project.yml` itself with `${VARIABLE_NAME}` syntax, which is resolved at generation time:
+
+```yaml
+settings:
+  DEVELOPMENT_TEAM: ${DEVELOPMENT_TEAM}
+```

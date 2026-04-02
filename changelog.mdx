@@ -1,0 +1,105 @@
+---
+title: "Changelog"
+description: "Release history and what's new in each version of XcodeGen"
+---
+
+<Note>
+  This page covers recent releases. For the complete release history, see the [full changelog on GitHub](https://github.com/yonaskolb/XcodeGen/blob/master/CHANGELOG.md).
+</Note>
+
+<AccordionGroup>
+  <Accordion title="v2.45.3">
+    ### Fixed
+
+    - Fix folder source `PBXFileReference` path regression with `createIntermediateGroups` (#1605)
+    - Fix synced folders: includes silently ignored and no deduplication across targets (#1604)
+  </Accordion>
+
+  <Accordion title="v2.45.2">
+    ### Fixed
+
+    - Validate empty source paths to prevent project root inclusion (#1601)
+    - Fix missing `productRefGroup` in generated projects (#1591)
+  </Accordion>
+
+  <Accordion title="v2.45.1">
+    ### Added
+
+    - Built-in `.icon` folder support for IconComposer (#1600)
+  </Accordion>
+
+  <Accordion title="v2.45.0">
+    ### Added
+
+    - Ability to specify project format version via `projectFormat` option (#1566)
+    - `explicitFolders` property on `TargetSource` for `PBXFileSystemSynchronizedRootGroup`, turning entire subfolders into Resources (#1596)
+    - Synced folders can now be sorted using `groupOrdering` (#1596)
+    - `excludes` support for `syncedFolder` sources with glob pattern matching (#1587)
+
+    ### Fixed
+
+    - Fixed synced folders ignoring `createIntermediateGroups=YES` and always being created at the root level (#1596)
+    - Fix membership exceptions not working for nested synced folders with intermediate groups enabled (#1596)
+    - Fix `supportedDestinations` presets being injected when `settingPresets` is `none` (#1599)
+    - Automatically exclude `Info.plist` from synced folder membership when it's within the synced folder (#1587)
+    - Add empty copy resources build phase for synced folders so resources are copied correctly (#1587)
+  </Accordion>
+
+  <Accordion title="v2.44.1">
+    ### Fixed
+
+    - Set the correct object version of 77 for Xcode 16 projects (#1563)
+    - Support `major.minor` SPM package versions, which would otherwise fail to decode as a string in YAML specs (#1546)
+    - Fix regression for `parallelizable` in scheme — now resolves to `"Enabled"` instead of `"Swift Testing Only"` (#1565)
+  </Accordion>
+
+  <Accordion title="v2.44.0">
+    ### Added
+
+    - Basic support for Xcode 16's synchronized folders (#1541)
+      - `TargetSource.type` can now be `syncedFolder`
+      - `Options.defaultSourceDirectoryType` can be set to `syncedFolder` to make it the default for all sources (defaults to `group`)
+      - Benefits include faster generation and no cache invalidation when files are added or removed
+    - Sanitizer options for run and test actions in schemes (#1550)
+
+    ### Fixed
+
+    - Added validation to ensure all values in `settings.configs` are mappings. `SpecParsingError.invalidConfigsMappingFormat` is now thrown on misuse (#1547)
+    - Use `USER` instead of `LOGNAME` for `XCUserData` (#1559)
+  </Accordion>
+
+  <Accordion title="v2.43.0">
+    ### Added
+
+    - `excludeFromProject` option for local packages (#1512)
+    - Support for `preferredScreenCaptureFormat` in schemes (#1450)
+
+    ### Changed
+
+    - `.appex` files are now copied to the plugins directory by default (#1531)
+    - `preGenCommand` is now run before validation and caching (#1500, #1519)
+    - Improved performance of spec validation (#1522)
+    - `enableGPUValidationMode` enum is deprecated and is now a boolean (#1515)
+
+    ### Fixed
+
+    - **Breaking**: `fileGroups` are now relative paths when used in included files, consistent with other paths (#1534)
+    - **Breaking**: Local package paths are now relative paths when used in included files, consistent with other paths (#1498)
+    - Optional groups are no longer skipped when missing and generating projects from a different directory (#1529)
+  </Accordion>
+
+  <Accordion title="v2.42.0">
+    ### Added
+
+    - Better support for local Swift packages in Xcode 15 (#1465)
+    - `macroExpansion` support for test actions in schemes (#1468)
+
+    ### Changed
+
+    - Improved default `macroExpansion` target selection in schemes (#1471)
+
+    ### Removed
+
+    - Removed `xcodegen dump --type graphviz` as graphviz no longer builds with Swift 6 and is unmaintained (#1485)
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,65 @@
+---
+title: "Installation"
+description: "Install XcodeGen on macOS using Homebrew, Mint, Make, or Swift Package Manager"
+---
+
+<Note>
+  The latest stable (non-beta) version of Xcode must be installed before installing XcodeGen.
+</Note>
+
+## Install XcodeGen
+
+<Tabs>
+  <Tab title="Homebrew">
+    ```bash
+    brew install xcodegen
+    ```
+  </Tab>
+  <Tab title="Mint">
+    ```bash
+    mint install yonaskolb/xcodegen
+    ```
+  </Tab>
+  <Tab title="Make">
+    Clone the repository and run `make install`:
+
+    ```bash
+    git clone https://github.com/yonaskolb/XcodeGen.git
+    cd XcodeGen
+    make install
+    ```
+  </Tab>
+  <Tab title="Swift Package Manager">
+    Clone the repository and run directly with `swift run`:
+
+    ```bash
+    git clone https://github.com/yonaskolb/XcodeGen.git
+    cd XcodeGen
+    swift run xcodegen
+    ```
+  </Tab>
+</Tabs>
+
+## Verify installation
+
+After installing, confirm XcodeGen is available by checking the version:
+
+```bash
+xcodegen version
+```
+
+## Using as a Swift library
+
+XcodeGen can also be integrated directly into your own Swift tools as a library via Swift Package Manager.
+
+Add `XcodeGenKit` as a dependency in your `Package.swift`:
+
+```swift
+.package(url: "https://github.com/yonaskolb/XcodeGen.git", from: "2.45.3")
+```
+
+Then import the module wherever you need it:
+
+```swift
+import XcodeGenKit
+```

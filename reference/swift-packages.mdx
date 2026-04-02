@@ -1,0 +1,310 @@
+---
+title: "Swift packages"
+description: "Integrate Swift Package Manager dependencies in your XcodeGen project spec"
+---
+
+Swift packages are defined at the project level under the `packages` key, then linked to individual targets via `dependencies`.
+
+```yaml
+packages:
+  Alamofire:
+    url: https://github.com/Alamofire/Alamofire
+    from: 5.8.0
+
+targets:
+  MyApp:
+    dependencies:
+      - package: Alamofire
+```
+
+---
+
+## Remote Package
+
+Remote packages are fetched from a URL. The `url` and a version constraint are required.
+
+<ParamField path="url" type="URL" required>
+  The URL to the Swift package repository.
+</ParamField>
+
+<ParamField path="from" type="String">
+  Minimum version (up to next major). Equivalent to `majorVersion`. Example: `from: 5.0.0`
+</ParamField>
+
+<ParamField path="majorVersion" type="String">
+  Alias for `from`. Minimum version up to next major.
+</ParamField>
+
+<ParamField path="minorVersion" type="String">
+  Minimum version up to next minor. Equivalent to `upToNextMinorVersion`.
+</ParamField>
+
+<ParamField path="upToNextMinorVersion" type="String">
+  Minimum version up to, but not including, the next minor version.
+</ParamField>
+
+<ParamField path="exactVersion" type="String">
+  Exact version to use. Equivalent to `version`.
+</ParamField>
+
+<ParamField path="version" type="String">
+  Alias for `exactVersion`.
+</ParamField>
+
+<ParamField path="minVersion" type="String">
+  Lower bound of a version range. Must be used with `maxVersion`.
+</ParamField>
+
+<ParamField path="maxVersion" type="String">
+  Upper bound of a version range. Must be used with `minVersion`.
+</ParamField>
+
+<ParamField path="branch" type="String">
+  A specific branch to use.
+</ParamField>
+
+<ParamField path="revision" type="String">
+  A specific Git revision (commit hash) to use.
+</ParamField>
+
+<ParamField path="github" type="String">
+  GitHub shorthand. Instead of providing the full URL in `url`, specify the GitHub `{org}/{repo}`. XcodeGen constructs the full URL automatically.
+</ParamField>
+
+### Version constraint examples
+
+```yaml
+packages:
+  # Up to next major (most common)
+  Alamofire:
+    url: https://github.com/Alamofire/Alamofire
+    from: 5.8.0
+
+  # Equivalent using majorVersion
+  Alamofire:
+    url: https://github.com/Alamofire/Alamofire
+    majorVersion: 5.8.0
+
+  # Up to next minor
+  Yams:
+    url: https://github.com/jpsim/Yams
+    minorVersion: 5.0.0
+
+  # Exact version
+  SwiftyJSON:
+    url: https://github.com/SwiftyJSON/SwiftyJSON
+    exactVersion: 5.0.1
+
+  # Version range
+  RxSwift:
+    url: https://github.com/ReactiveX/RxSwift
+    minVersion: 6.0.0
+    maxVersion: 6.9.9
+
+  # Branch
+  SwiftPM:
+    url: https://github.com/apple/swift-package-manager
+    branch: main
+
+  # Revision
+  MyLib:
+    url: https://github.com/myorg/mylib
+    revision: abc123def456
+
+  # GitHub shorthand
+  Ink:
+    github: JohnSundell/Ink
+    from: 0.5.0
+```
+
+---
+
+## Local Package
+
+Local packages reference a directory on disk containing a `Package.swift`.
+
+<ParamField path="path" type="String" required>
+  Path to the local package directory (must contain `Package.swift`).
+</ParamField>
+
+<ParamField path="group" type="String">
+  The Xcode group path where the package will appear in the project navigator. Use `""` to place it at the project root. Defaults to the value of `options.localPackagesGroup`.
+</ParamField>
+
+<ParamField path="excludeFromProject" type="Bool">
+  When `true`, the package is not added to the generated project. Useful when the package is already included via a workspace and the project is not used standalone. Defaults to `false`.
+</ParamField>
+
+```yaml
+packages:
+  RxClient:
+    path: ../RxClient
+
+  AppFeature:
+    path: ../Packages
+    group: Domains/AppFeature
+
+  SharedKit:
+    path: ../SharedKit
+    excludeFromProject: false
+```
+
+---
+
+## Referencing packages in target dependencies
+
+Link a package to a target using `package: {name}` in the target's `dependencies` list. The name must match a key under `packages`.
+
+### Single product (default)
+
+By default, the product name is assumed to match the package name.
+
+```yaml
+packages:
+  Alamofire:
+    url: https://github.com/Alamofire/Alamofire
+    from: 5.8.0
+
+targets:
+  MyApp:
+    dependencies:
+      - package: Alamofire
+```
+
+### Single product with explicit name
+
+Use `product` when the library name differs from the package name, or when a package exposes multiple products and you want a specific one.
+
+```yaml
+packages:
+  SwiftPM:
+    url: https://github.com/apple/swift-package-manager
+    branch: main
+
+targets:
+  MyApp:
+    dependencies:
+      - package: SwiftPM
+        product: SPMUtility
+```
+
+### Multiple products from a single package
+
+Use `products` to link more than one product from the same package. This is equivalent to listing separate dependencies, but more concise.
+
+```yaml
+packages:
+  FooFeature:
+    path: Packages/FooFeature
+
+targets:
+  App:
+    dependencies:
+      - package: FooFeature
+        products:
+          - FooDomain
+          - FooUI
+```
+
+<Note>
+  Use `product` (singular) when you need to set different linking options (e.g. `embed`, `link`, `weak`) per product. Use `products` (plural) when all products share the same options.
+</Note>
+
+---
+
+## Build Tool Plug-ins from packages
+
+Packages can also provide build tool plug-ins. These are connected via `buildToolPlugins` on a target rather than `dependencies`.
+
+```yaml
+packages:
+  MyPackage:
+    url: https://github.com/MyOrg/MyPackage
+    from: 1.3.0
+
+targets:
+  App:
+    buildToolPlugins:
+      - plugin: MyPlugin
+        package: MyPackage
+```
+
+---
+
+## `localPackagesGroup` option
+
+Local packages are placed in an Xcode group controlled by `options.localPackagesGroup`. The default group name is `Packages`.
+
+```yaml
+options:
+  localPackagesGroup: Dependencies  # custom group name
+  # localPackagesGroup: ""          # place at project root
+```
+
+Individual packages can override this with their own `group` property.
+
+---
+
+## Package.resolved and version locking
+
+When XcodeGen generates the project, Xcode manages a `Package.resolved` file that locks all resolved package versions. This file is stored inside the `.xcodeproj` bundle at:
+
+```
+MyApp.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+```
+
+Commit this file to source control to ensure reproducible builds across your team.
+
+---
+
+## Complete example
+
+```yaml
+packages:
+  # Remote — up to next major
+  Alamofire:
+    url: https://github.com/Alamofire/Alamofire
+    from: 5.8.0
+
+  # Remote — GitHub shorthand
+  Ink:
+    github: JohnSundell/Ink
+    from: 0.5.0
+
+  # Remote — exact version
+  SwiftyJSON:
+    url: https://github.com/SwiftyJSON/SwiftyJSON
+    exactVersion: 5.0.1
+
+  # Remote — branch
+  SwiftPM:
+    url: https://github.com/apple/swift-package-manager
+    branch: main
+
+  # Local package
+  CoreFeature:
+    path: ../Packages/CoreFeature
+
+  # Local package in a specific group
+  UIComponents:
+    path: ../Packages/UIComponents
+    group: Shared/UIComponents
+
+options:
+  localPackagesGroup: Packages
+
+targets:
+  MyApp:
+    type: application
+    platform: iOS
+    dependencies:
+      - package: Alamofire
+      - package: Ink
+      - package: SwiftPM
+        product: SPMUtility
+      - package: CoreFeature
+        products:
+          - CoreDomain
+          - CoreData
+      - package: UIComponents
+```

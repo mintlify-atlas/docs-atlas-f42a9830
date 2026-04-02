@@ -1,0 +1,401 @@
+---
+title: "Project spec"
+description: "Top-level project spec properties: name, include, options, configs, settings, and more"
+---
+
+The project spec is the YAML (or JSON) file that XcodeGen reads to generate your `.xcodeproj`. By default XcodeGen looks for `project.yml` in the current directory.
+
+You can use environment variables anywhere in the spec with `${SOME_VARIABLE}` syntax.
+
+## Top-level properties
+
+<ParamField path="name" type="String" required>
+  The name of the generated Xcode project. The `.xcodeproj` file will be named `{name}.xcodeproj`.
+</ParamField>
+
+<ParamField path="include" type="[Include]">
+  One or more paths to other spec files to merge into this spec. See [Include](#include) below.
+</ParamField>
+
+<ParamField path="options" type="Options">
+  Various options to override default XcodeGen behaviour. See [Options](#options) below.
+</ParamField>
+
+<ParamField path="attributes" type="[String: Any]">
+  The `PBXProject` attributes. For advanced use. If `LastUpgradeCheck` is not set, it defaults to the current `xcodeVersion` from `options`.
+</ParamField>
+
+<ParamField path="breakpoints" type="[Breakpoint]">
+  Shared breakpoints to add to the generated project.
+</ParamField>
+
+<ParamField path="configs" type="Configs">
+  Project build configurations. Defaults to `Debug` (debug) and `Release` (release) if not specified. See [Configs](#configs) below.
+</ParamField>
+
+<ParamField path="configFiles" type="[String: String]">
+  A mapping of config name to `.xcconfig` file path for project-level xcconfig files.
+</ParamField>
+
+<ParamField path="settings" type="Settings">
+  Project-level build settings. Default base and config type settings are applied first, then these settings are merged on top.
+</ParamField>
+
+<ParamField path="settingGroups" type="[String: Settings]">
+  Named groups of build settings that can be referenced by name from target or project settings via `groups`.
+</ParamField>
+
+<ParamField path="targets" type="[String: Target]">
+  The targets in the project, mapped by name.
+</ParamField>
+
+<ParamField path="fileGroups" type="[String]">
+  Paths to add to the root of the project hierarchy. These are not compiled into any target — useful for xcconfig files, READMEs, or other files you want visible in Xcode.
+</ParamField>
+
+<ParamField path="schemes" type="[String: Scheme]">
+  Named schemes for the project. Provides more control than the per-target `scheme` shortcut.
+</ParamField>
+
+<ParamField path="schemeTemplates" type="[String: Scheme]">
+  Named scheme templates that can be referenced from schemes via a `templates` property.
+</ParamField>
+
+<ParamField path="targetTemplates" type="[String: Target]">
+  Named target templates that can be referenced from targets via a `templates` property.
+</ParamField>
+
+<ParamField path="packages" type="[String: SwiftPackage]">
+  Swift Package Manager dependencies for the project, mapped by name.
+</ParamField>
+
+<ParamField path="projectReferences" type="[String: ProjectReference]">
+  References to other `.xcodeproj` files, mapped by name.
+</ParamField>
+
+---
+
+## Include
+
+One or more specs can be included in the project spec. Included specs can themselves include other specs. Includes are merged in order, with the current spec merged last (highest priority).
+
+An include can be a plain string (the path) or an object:
+
+<ParamField path="path" type="String" required>
+  The path to the included spec file.
+</ParamField>
+
+<ParamField path="relativePaths" type="Bool">
+  When `true` (default), paths inside the included spec are relative to that spec file. When `false`, paths are relative to the root spec file.
+</ParamField>
+
+<ParamField path="enable" type="Bool">
+  Whether to include this spec. You can use an environment variable: `${INCLUDE_ADDITIONAL_YAML}`.
+</ParamField>
+
+### Merge behaviour
+
+By default, specs are merged additively:
+
+- Two dictionaries are merged recursively.
+- Two arrays are concatenated (new value appended to end).
+- Any other value type replaces the existing value.
+
+To override a whole value instead of merging, append `:REPLACE` to the key:
+
+```yaml
+include:
+  - base.yml
+name: CustomSpec
+targets:
+  MyTarget:
+    sources:REPLACE:
+      - my_new_sources
+```
+
+```yaml
+include:
+  - includedFile.yml
+  - path: path/to/includedFile.yml
+    relativePaths: false
+    enable: ${INCLUDE_ADDITIONAL_YAML}
+```
+
+---
+
+## Options
+
+<ParamField path="minimumXcodeGenVersion" type="String">
+  The minimum version of XcodeGen required to generate this spec.
+</ParamField>
+
+<ParamField path="carthageBuildPath" type="String">
+  The path to the Carthage build directory. Defaults to `Carthage/Build`.
+</ParamField>
+
+<ParamField path="carthageExecutablePath" type="String">
+  The path to the Carthage executable. Defaults to `carthage`. Useful when using a locally installed Carthage via Mint.
+</ParamField>
+
+<ParamField path="createIntermediateGroups" type="Bool">
+  When `true`, intermediate Xcode groups are created for every path component between the source and the nearest existing group. For example, `Vendor/Foo/Hello.swift` creates `Vendor` and `Foo` groups. Can be overridden per target source.
+</ParamField>
+
+<ParamField path="bundleIdPrefix" type="String">
+  If set, any target without a `PRODUCT_BUNDLE_IDENTIFIER` build setting gets an auto-generated bundle ID of `{bundleIdPrefix}.{targetName}`. Underscores are replaced with hyphens; non-alphanumeric characters other than hyphens and periods are stripped.
+</ParamField>
+
+<ParamField path="settingPresets" type="String">
+  Controls which default build settings Xcode would normally apply when creating a new project. Defaults to `all`.
+
+  - `all` — project and target settings
+  - `project` — only project settings
+  - `targets` — only target settings
+  - `none` — no default settings are applied
+</ParamField>
+
+<ParamField path="developmentLanguage" type="String">
+  Sets the development language of the project. Defaults to `en`.
+</ParamField>
+
+<ParamField path="usesTabs" type="Bool">
+  When set, overrides the user's tab/space preference in the Xcode project.
+</ParamField>
+
+<ParamField path="indentWidth" type="Int">
+  When set, overrides the user's indent width (number of spaces) in the Xcode project.
+</ParamField>
+
+<ParamField path="tabWidth" type="Int">
+  When set, overrides the user's tab width (number of spaces) in the Xcode project.
+</ParamField>
+
+<ParamField path="xcodeVersion" type="String">
+  The version of Xcode. Defaults to a recent version. Accepts formats `0910` or `9.1`.
+</ParamField>
+
+<ParamField path="projectFormat" type="String">
+  The Xcode project file format version. Defaults to `xcode16_0`.
+
+  - `xcode16_3`
+  - `xcode16_0`
+  - `xcode15_3`
+  - `xcode15_0`
+  - `xcode14_0`
+</ParamField>
+
+<ParamField path="deploymentTarget" type="[Platform: String]">
+  Project-wide deployment targets per platform. Overridden by any custom build settings (e.g. `IPHONEOS_DEPLOYMENT_TARGET`) or target-level `deploymentTarget`.
+
+  ```yaml
+  options:
+    deploymentTarget:
+      iOS: "15.0"
+      macOS: "12.0"
+      watchOS: "8.0"
+      tvOS: "15.0"
+  ```
+</ParamField>
+
+<ParamField path="disabledValidations" type="[String]">
+  Validations to skip. Defaults to empty.
+
+  - `missingConfigs` — skip errors for configurations in YAML that don't exist in the project
+  - `missingConfigFiles` — skip checking for xcconfig file existence
+  - `missingTestPlans` — skip checking if test plan paths exist
+</ParamField>
+
+<ParamField path="defaultConfig" type="String">
+  The default configuration for command-line Xcode builds. Must match a key in `configs`. If not set, the first configuration alphabetically is used.
+</ParamField>
+
+<ParamField path="groupSortPosition" type="String">
+  Where groups are sorted relative to other files. Defaults to `bottom`.
+
+  - `none` — sorted alphabetically with all other files
+  - `top` — before files
+  - `bottom` — after files (default)
+</ParamField>
+
+<ParamField path="groupOrdering" type="[GroupOrdering]">
+  Ordered list of group name patterns and their desired child group order.
+
+  ```yaml
+  options:
+    groupOrdering:
+      - order: [Sources, Resources, Tests, Support files, Configurations]
+      - pattern: '^.*Screen$'
+        order: [View, Presenter, Interactor, Entities, Assembly]
+  ```
+</ParamField>
+
+<ParamField path="transitivelyLinkDependencies" type="Bool">
+  When `true`, targets link to the dependencies of their target dependencies. Application and test bundles also embed transitive dependencies. Defaults to `false`. Can be overridden per target.
+</ParamField>
+
+<ParamField path="generateEmptyDirectories" type="Bool">
+  When `true`, empty directories are added to the project. Defaults to `false`.
+</ParamField>
+
+<ParamField path="findCarthageFrameworks" type="Bool">
+  When `true`, all individual frameworks for Carthage dependencies are found automatically. Can be overridden per dependency with `findFrameworks`. Defaults to `false`.
+</ParamField>
+
+<ParamField path="localPackagesGroup" type="String">
+  The Xcode group name that local Swift packages are placed in. Defaults to `Packages`. Use `""` to place them at the project root.
+</ParamField>
+
+<ParamField path="fileTypes" type="[String: FileType]">
+  Default file options for specific file extensions across the project. Values in target sources override these settings.
+</ParamField>
+
+<ParamField path="preGenCommand" type="String">
+  A shell command to run before project generation. Always runs, even on a cache hit — it executes before cache evaluation.
+</ParamField>
+
+<ParamField path="postGenCommand" type="String">
+  A shell command to run after project generation. Skipped when the cache indicates nothing has changed. Useful for running `pod install` only when the project is actually regenerated.
+</ParamField>
+
+<ParamField path="useBaseInternationalization" type="Bool">
+  When `false` and no resources are in a `Base.lproj` directory, `Base` is not included in the project's known regions. Defaults to `true`.
+</ParamField>
+
+<ParamField path="schemePathPrefix" type="String">
+  Path prefix for relative paths in schemes (e.g. `StoreKitConfiguration`). Defaults to `"../../"` for non-workspace projects. Use `"../"` for workspace projects.
+</ParamField>
+
+<ParamField path="defaultSourceDirectoryType" type="String">
+  The default type used when a target source is a directory and no `type` is specified. Defaults to `group`.
+
+  - `group` — creates an Xcode group (default)
+  - `folder` — creates a folder reference
+  - `syncedFolder` — Xcode 16 synchronized folder (requires `projectFormat: xcode16_0` or later)
+</ParamField>
+
+```yaml
+options:
+  deploymentTarget:
+    watchOS: "2.0"
+    tvOS: "10.0"
+  postGenCommand: pod install
+  bundleIdPrefix: com.mycompany
+  settingPresets: all
+  xcodeVersion: "1530"
+  createIntermediateGroups: true
+```
+
+---
+
+## Configs
+
+Each config maps to a build type of `debug` or `release`, which determines the default build settings applied. Any other value (e.g. `none`) results in no default build settings.
+
+```yaml
+configs:
+  Debug: debug
+  Beta: release
+  AppStore: release
+```
+
+If `configs` is not specified, `Debug` (debug) and `Release` (release) are created automatically.
+
+---
+
+## Setting Groups
+
+Named groups of build settings that can be reused across targets and project settings. Each group is a [Settings](/reference/settings) object.
+
+```yaml
+settingGroups:
+  preset_generic:
+    CUSTOM_SETTING: value_custom
+  preset_debug:
+    BUILD_SETTING: value_debug
+  preset_release:
+    base:
+      BUILD_SETTING: value_release
+  preset_all:
+    groups:
+      - preset_generic
+    configs:
+      debug:
+        groups:
+          - preset_debug
+      release:
+        groups:
+          - preset_release
+
+targets:
+  Application:
+    settings:
+      groups:
+        - preset_all
+```
+
+---
+
+## Complete example
+
+```yaml
+name: MyApp
+
+include:
+  - base.yml
+  - path: optional.yml
+    enable: ${INCLUDE_OPTIONAL}
+
+options:
+  bundleIdPrefix: com.mycompany
+  deploymentTarget:
+    iOS: "15.0"
+  postGenCommand: pod install
+  settingPresets: all
+  createIntermediateGroups: true
+
+configs:
+  Debug: debug
+  Staging: release
+  Release: release
+
+configFiles:
+  Debug: Configs/debug.xcconfig
+  Staging: Configs/staging.xcconfig
+  Release: Configs/release.xcconfig
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+  configs:
+    debug:
+      DEBUG_INFORMATION_FORMAT: dwarf
+    release:
+      DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
+
+settingGroups:
+  common:
+    SWIFT_VERSION: "5.9"
+
+packages:
+  Alamofire:
+    url: https://github.com/Alamofire/Alamofire
+    from: 5.8.0
+
+fileGroups:
+  - README.md
+  - Configs
+
+targets:
+  MyApp:
+    type: application
+    platform: iOS
+    sources: MyApp
+    dependencies:
+      - package: Alamofire
+
+schemes:
+  MyApp:
+    build:
+      targets:
+        MyApp: all
+```

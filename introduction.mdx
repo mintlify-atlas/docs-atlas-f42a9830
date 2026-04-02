@@ -1,0 +1,85 @@
+---
+title: "XcodeGen"
+description: "Generate your Xcode project from a simple YAML spec — no more merge conflicts, no more manual project file edits."
+---
+
+XcodeGen is a Swift command line tool that generates your Xcode project from a human-readable `project.yml` spec file. Define your targets, configurations, schemes, and dependencies in YAML, then run `xcodegen generate` to get a fully configured `.xcodeproj`.
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install XcodeGen via Homebrew, Mint, or Swift Package Manager
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Create your first project spec and generate an Xcode project in minutes
+  </Card>
+  <Card title="Project Spec Reference" icon="file-code" href="/reference/project-spec">
+    Complete reference for all project spec options and properties
+  </Card>
+  <Card title="Command Reference" icon="terminal" href="/reference/commands">
+    All CLI commands and flags: generate, dump, cache
+  </Card>
+</CardGroup>
+
+## Why XcodeGen?
+
+Managing `.xcodeproj` files by hand is painful. They're binary-like XML files that cause merge conflicts, drift out of sync with your filesystem, and require constant manual updates when files are added or removed.
+
+XcodeGen solves this by treating your project configuration as code:
+
+- **No merge conflicts** — remove `.xcodeproj` from git entirely and regenerate on demand
+- **Always in sync** — source files are discovered automatically from your folder structure
+- **Readable configuration** — YAML that's easy to review in pull requests
+- **CI-friendly** — generate the project as part of your build pipeline
+- **Composable** — split your spec across multiple files and share settings between projects
+
+## How it works
+
+<Steps>
+  <Step title="Write a project spec">
+    Create a `project.yml` file at the root of your repository describing your targets, settings, and dependencies.
+  </Step>
+  <Step title="Run XcodeGen">
+    Run `xcodegen generate` to produce a fully configured `.xcodeproj` from your spec.
+  </Step>
+  <Step title="Open in Xcode">
+    Open the generated project in Xcode and start building. Add files to your filesystem and regenerate — they'll appear automatically.
+  </Step>
+  <Step title="Automate on CI">
+    Run `xcodegen generate` as the first step in your CI pipeline so every build starts from a clean, reproducible project.
+  </Step>
+</Steps>
+
+## Example spec
+
+```yaml project.yml
+name: MyApp
+options:
+  bundleIdPrefix: com.mycompany
+targets:
+  MyApp:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources: [MyApp]
+    dependencies:
+      - package: Alamofire
+packages:
+  Alamofire:
+    url: https://github.com/Alamofire/Alamofire
+    from: 5.0.0
+```
+
+<CardGroup cols={2}>
+  <Card title="Guides" icon="book" href="/guides/build-settings">
+    Learn how to configure build settings, dependencies, and schemes
+  </Card>
+  <Card title="Examples" icon="code" href="/examples">
+    Real-world XcodeGen project specs from open source projects
+  </Card>
+  <Card title="Git Workflow" icon="code-branch" href="/guides/git-workflow">
+    Set up git hooks for automatic project regeneration
+  </Card>
+  <Card title="FAQ" icon="circle-question" href="/faq">
+    Answers to common questions about XcodeGen
+  </Card>
+</CardGroup>

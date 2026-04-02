@@ -1,0 +1,78 @@
+{
+  "projectType": "cli-tool",
+  "projectName": "XcodeGen",
+  "projectDescription": "A Swift command line tool that generates Xcode projects from a human-readable YAML or JSON project spec, eliminating merge conflicts and keeping files in sync with the filesystem.",
+  "theme": "palm",
+  "primaryColor": "#94cb04",
+  "lightColor": "#545454",
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/build-settings",
+              "guides/dependencies",
+              "guides/schemes",
+              "guides/ci-integration",
+              "guides/git-workflow"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/commands",
+              "reference/project-spec",
+              "reference/targets",
+              "reference/settings",
+              "reference/schemes-reference",
+              "reference/swift-packages"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "faq",
+              "examples",
+              "changelog"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Generate Xcode projects from YAML/JSON spec files",
+    "Eliminate .xcodeproj merge conflicts by keeping it out of git",
+    "Auto-sync groups and files with directory structure on disk",
+    "Share build settings across targets with setting groups",
+    "Integrate Carthage, CocoaPods, and Swift Package Manager dependencies",
+    "Auto-generate schemes for different environments",
+    "Support for multi-platform frameworks (iOS, macOS, watchOS, tvOS)",
+    "Include and compose multiple spec files",
+    "Cache support to avoid unnecessary project regeneration",
+    "Run pre/post generation shell commands"
+  ],
+  "publicApiSurface": [
+    "xcodegen generate",
+    "xcodegen dump",
+    "xcodegen cache",
+    "XcodeGenKit (Swift library)",
+    "ProjectSpec (Swift library)",
+    "project.yml spec: name, include, options, targets, schemes, packages, configs, settings, settingGroups",
+    "Target: type, platform, sources, dependencies, settings, schemes, buildScripts, buildRules",
+    "Scheme: build, run, test, profile, analyze, archive actions",
+    "Options: bundleIdPrefix, deploymentTarget, postGenCommand, preGenCommand, settingPresets, carthageBuildPath"
+  ]
+}

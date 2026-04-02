@@ -1,0 +1,236 @@
+---
+title: "Build settings reference"
+description: "Reference for the Settings object, setting groups, and xcconfig file integration"
+---
+
+Build settings in XcodeGen correspond to the **Build Settings** tab in Xcode. To see setting names instead of titles in Xcode, select **Editor → Show Setting Names**.
+
+Settings can be defined at the project level (under `settings`) or at the target level (under `targets.{name}.settings`).
+
+---
+
+## Settings object
+
+A Settings value can be one of two forms: a **simple map** or a **structured object**.
+
+### Simple map
+
+A flat `[String: String]` map of build setting names to values.
+
+```yaml
+settings:
+  SWIFT_VERSION: "5.9"
+  GENERATE_INFOPLIST_FILE: "NO"
+  CODE_SIGNING_ALLOWED: "NO"
+```
+
+### Structured object
+
+A structured object with `base`, `configs`, and/or `groups` keys.
+
+<Warning>
+  Do not mix simple maps with `base`, `configs`, or `groups`. If any of these structured keys are present, simple map entries at the same level are silently ignored.
+
+  ```yaml
+  # MARKETING_VERSION will be ignored here
+  settings:
+    MARKETING_VERSION: "100.0.0"
+    base:
+      CURRENT_PROJECT_VERSION: "100.0"
+  ```
+</Warning>
+
+<ParamField path="base" type="[String: String]">
+  Build settings that apply to all configurations.
+</ParamField>
+
+<ParamField path="configs" type="[String: Settings]">
+  A mapping of configuration name to a nested Settings object. Applied only for matching configurations.
+
+  Config names are matched case-insensitively and partially. For example, `staging` matches both `Staging Debug` and `Staging Release`. However, an exact match (e.g. `Release`) does not also apply to `Staging Release`.
+</ParamField>
+
+<ParamField path="groups" type="[String]">
+  A list of [Setting Group](/reference/project-spec#setting-groups) names to include and merge. Groups are defined under `settingGroups` in the project spec.
+</ParamField>
+
+### Merging order
+
+Settings are applied in this order (each layer overrides the previous):
+
+1. `groups` (merged in list order)
+2. `base`
+3. `configs` (only the matching config)
+
+Simple map entries are ignored when structured keys are present.
+
+---
+
+## Examples
+
+### Simple map
+
+```yaml
+settings:
+  SWIFT_VERSION: "5.9"
+  PRODUCT_BUNDLE_IDENTIFIER: com.mycompany.myapp
+```
+
+### Structured with base and configs
+
+```yaml
+settings:
+  base:
+    PRODUCT_NAME: MyApp
+    SWIFT_VERSION: "5.9"
+  configs:
+    debug:
+      CODE_SIGN_IDENTITY: "iPhone Developer"
+      PRODUCT_BUNDLE_IDENTIFIER: com.mycompany.debug_app
+    release:
+      CODE_SIGN_IDENTITY: "iPhone Distribution"
+      PRODUCT_BUNDLE_IDENTIFIER: com.mycompany.app
+      PROVISIONING_PROFILE_SPECIFIER: "MyApp Release"
+  groups:
+    - common_settings
+```
+
+### Using groups
+
+```yaml
+settingGroups:
+  common_settings:
+    SWIFT_VERSION: "5.9"
+    ENABLE_BITCODE: "NO"
+  debug_settings:
+    DEBUG_INFORMATION_FORMAT: dwarf
+  release_settings:
+    base:
+      DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
+    ENABLE_TESTABILITY: "NO"
+
+targets:
+  MyApp:
+    settings:
+      groups:
+        - common_settings
+      configs:
+        debug:
+          groups:
+            - debug_settings
+        release:
+          groups:
+            - release_settings
+```
+
+---
+
+## Setting Groups
+
+Setting groups are named, reusable collections of build settings defined at the project level under `settingGroups`. Each group is itself a Settings object, so it supports `base`, `configs`, and nested `groups`.
+
+```yaml
+settingGroups:
+  preset_generic:
+    CUSTOM_SETTING: value_custom
+  preset_debug:
+    BUILD_SETTING: value_debug
+  preset_release:
+    base:
+      BUILD_SETTING: value_release
+  preset_all:
+    groups:
+      - preset_generic
+    configs:
+      debug:
+        groups:
+          - preset_debug
+      release:
+        groups:
+          - preset_release
+
+targets:
+  Application:
+    settings:
+      groups:
+        - preset_all
+```
+
+---
+
+## xcconfig files
+
+`.xcconfig` files can be assigned per configuration at both the project and target level using the `configFiles` key.
+
+```yaml
+configFiles:
+  Debug: Configs/debug.xcconfig
+  Release: Configs/release.xcconfig
+
+targets:
+  MyApp:
+    configFiles:
+      Debug: MyApp/debug.xcconfig
+      Release: MyApp/release.xcconfig
+```
+
+<Tip>
+  Use `fileGroups` to add xcconfig files to the Xcode project hierarchy without attaching them to a target's sources:
+
+  ```yaml
+  fileGroups:
+    - Configs
+  ```
+</Tip>
+
+---
+
+## Setting presets
+
+The `options.settingPresets` key controls which default build settings XcodeGen applies automatically — the same ones Xcode adds when creating a new project.
+
+Project settings are applied by configuration type (debug/release). Target settings are applied by product type and platform.
+
+```yaml
+options:
+  settingPresets: all  # default
+```
+
+| Value | Effect |
+|---|---|
+| `all` | Apply both project and target default settings (default) |
+| `project` | Apply only project-level default settings |
+| `targets` | Apply only target-level default settings |
+| `none` | Do not apply any default settings |
+
+---
+
+## Override merge behaviour with `:REPLACE`
+
+When using `include` to merge specs, you can prevent a key from being merged additively by appending `:REPLACE` to it. This causes the value to completely replace the inherited value instead of merging.
+
+```yaml
+include:
+  - base.yml
+name: CustomSpec
+targets:
+  MyTarget:
+    settings:REPLACE:
+      base:
+        SWIFT_VERSION: "5.9"
+```
+
+This is particularly useful for overriding arrays or dictionaries from an included spec without inheriting their existing contents.
+
+---
+
+## Precedence
+
+Settings from multiple sources are combined in this general order, from lowest to highest priority:
+
+1. XcodeGen default setting presets (controlled by `options.settingPresets`)
+2. Project-level `settings`
+3. Target-level `settings`
+4. xcconfig files (`configFiles`)
+
+Within a Settings object, `groups` are applied first, then `base`, then `configs`. Simple map entries are ignored when structured keys are present.

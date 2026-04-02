@@ -1,0 +1,142 @@
+---
+title: "CI integration"
+description: "Run XcodeGen in continuous integration pipelines to generate your Xcode project before building"
+---
+
+When you remove `.xcodeproj` from your git repository (the recommended workflow), your CI pipeline must generate the project before building. XcodeGen is designed to run in automated environments and integrates cleanly into any CI system.
+
+## Installation
+
+Install XcodeGen on your CI runner before the generate step.
+
+<Tabs>
+  <Tab title="Homebrew">
+    ```bash
+    brew install xcodegen
+    ```
+  </Tab>
+  <Tab title="Mint">
+    ```bash
+    mint install yonaskolb/xcodegen
+    ```
+  </Tab>
+  <Tab title="Make">
+    ```bash
+    git clone https://github.com/yonaskolb/XcodeGen.git
+    cd XcodeGen
+    make install
+    ```
+  </Tab>
+</Tabs>
+
+## Basic usage
+
+Run `xcodegen generate` before any `xcodebuild` commands:
+
+```bash
+xcodegen generate
+xcodebuild -scheme MyApp -configuration Release -workspace MyApp.xcworkspace build
+```
+
+By default, XcodeGen looks for `project.yml` in the current directory and writes the generated project alongside it. Use `--spec` to point to a different spec file:
+
+```bash
+xcodegen generate --spec path/to/my_project.yml
+```
+
+Use `--project` to write the generated `.xcodeproj` to a specific directory:
+
+```bash
+xcodegen generate --project build/
+```
+
+<Note>
+Pass `--quiet` to suppress informational and success messages, keeping CI logs cleaner:
+
+```bash
+xcodegen generate --quiet
+```
+</Note>
+
+## Skipping unchanged projects with cache
+
+Use `--use-cache` to skip generation when the spec and all referenced files are unchanged. XcodeGen writes a cache file on each successful generation and compares it on subsequent runs.
+
+```bash
+xcodegen generate --use-cache
+```
+
+Use `--cache-path` to set a custom cache file location (useful for persisting cache between CI runs):
+
+```bash
+xcodegen generate --use-cache --cache-path /tmp/xcodegen-cache
+```
+
+## Pre- and post-generation commands
+
+The `preGenCommand` and `postGenCommand` options run shell commands around project generation. `preGenCommand` always runs — even on a cache hit — because it runs before cache evaluation. `postGenCommand` only runs when the project is actually regenerated; it is skipped if the cache is valid.
+
+```yaml
+options:
+  preGenCommand: scripts/generate_resources.sh
+  postGenCommand: pod install
+```
+
+This is particularly useful for:
+
+- Generating resource files or Swift code before the project is created
+- Running `pod install` only when the project changes
+
+## Environment variables
+
+Use `${VARIABLE_NAME}` syntax anywhere in `project.yml` to substitute environment variables at generation time. This lets you inject CI-specific values without modifying the spec file:
+
+```yaml
+name: MyApp
+settings:
+  DEVELOPMENT_TEAM: ${DEVELOPMENT_TEAM}
+  PRODUCT_BUNDLE_IDENTIFIER: ${BUNDLE_ID}
+targets:
+  MyApp:
+    type: application
+    platform: iOS
+    sources: [MyApp]
+```
+
+Then set the variables in your CI environment or pass them inline:
+
+```bash
+DEVELOPMENT_TEAM=XXXXXXXXX BUNDLE_ID=com.example.app xcodegen generate
+```
+
+## Example CI workflow
+
+The following script covers a typical CI build from a clean checkout:
+
+```bash
+#!/bin/bash
+set -euo pipefail
+
+# Install XcodeGen if not already available
+if ! command -v xcodegen &> /dev/null; then
+  brew install xcodegen
+fi
+
+# Generate the Xcode project
+xcodegen generate --use-cache --quiet
+
+# Install CocoaPods dependencies (if using CocoaPods)
+# pod install is also handled by postGenCommand above when the project changes
+
+# Build and test
+xcodebuild \
+  -workspace MyApp.xcworkspace \
+  -scheme MyApp \
+  -configuration Debug \
+  -destination 'platform=iOS Simulator,name=iPhone 16' \
+  test
+```
+
+<Tip>
+If your CI system caches the Homebrew prefix or Mint packages between runs, subsequent pipeline executions will skip the install step and start generating immediately.
+</Tip>

@@ -1,0 +1,631 @@
+---
+title: "Targets"
+description: "Configure targets: type, platform, sources, dependencies, build scripts, and more"
+---
+
+Targets are defined under the `targets` key in your project spec, mapped by name.
+
+```yaml
+targets:
+  MyApp:
+    type: application
+    platform: iOS
+    sources: MyApp
+```
+
+## Target properties
+
+<ParamField path="type" type="String" required>
+  The product type of the target. Determines default build settings.
+
+  <Expandable title="Available product types">
+    - `application`
+    - `application.on-demand-install-capable`
+    - `application.messages`
+    - `application.watchapp`
+    - `application.watchapp2`
+    - `application.watchapp2-container`
+    - `app-extension`
+    - `app-extension.intents-service`
+    - `app-extension.messages`
+    - `app-extension.messages-sticker-pack`
+    - `bundle`
+    - `bundle.ocunit-test`
+    - `bundle.ui-testing`
+    - `bundle.unit-test`
+    - `extensionkit-extension`
+    - `framework`
+    - `instruments-package`
+    - `library.dynamic`
+    - `library.static`
+    - `framework.static`
+    - `tool`
+    - `tv-app-extension`
+    - `watchkit-extension`
+    - `watchkit2-extension`
+    - `xcode-extension`
+    - `driver-extension`
+    - `system-extension`
+    - `xpc-service`
+    - `""` (used for legacy targets)
+  </Expandable>
+</ParamField>
+
+<ParamField path="platform" type="String" required>
+  The target platform. Determines default build settings.
+
+  - `iOS`
+  - `macOS`
+  - `tvOS`
+  - `watchOS`
+  - `visionOS` (Carthage is not supported)
+  - `auto` (only valid when using `supportedDestinations`)
+
+  You can also specify an array of platforms to generate a separate target per platform:
+
+  ```yaml
+  targets:
+    MyFramework:
+      platform: [iOS, tvOS]
+      type: framework
+      sources: MyFramework
+  ```
+
+  Generated targets are named `MyFramework_iOS` and `MyFramework_tvOS` by default. Override with `platformSuffix` or `platformPrefix`. Use `${platform}` anywhere in the target spec to reference the current platform name.
+</ParamField>
+
+<ParamField path="supportedDestinations" type="[String]">
+  List of supported platform destinations for a multi-platform target (Xcode 14+). When used, `platform` can be omitted (defaults to `auto`).
+
+  Available values: `iOS`, `tvOS`, `macOS`, `macCatalyst`, `visionOS`, `watchOS`
+
+  ```yaml
+  targets:
+    MyFramework:
+      type: framework
+      supportedDestinations: [iOS, tvOS]
+  ```
+</ParamField>
+
+<ParamField path="deploymentTarget" type="String">
+  The deployment target (e.g. `"15.0"`). If not specified, the value from `options.deploymentTarget.{PLATFORM}` is used. Can be a map when using multi-platform targets:
+
+  ```yaml
+  deploymentTarget:
+    iOS: "15.0"
+    tvOS: "15.0"
+  ```
+</ParamField>
+
+<ParamField path="sources" type="Sources">
+  Source directories or files for the target. Can be a string, an object, or a list of strings/objects. See [Sources](#sources) below.
+</ParamField>
+
+<ParamField path="configFiles" type="[String: String]">
+  A mapping of config name to `.xcconfig` file path for this target.
+</ParamField>
+
+<ParamField path="settings" type="Settings">
+  Target-level build settings. Default platform and product type settings are applied first. XcodeGen also sets context-dependent settings automatically:
+  - `INFOPLIST_FILE` — if not set, the first `Info.plist` found in sources is used
+  - `FRAMEWORK_SEARCH_PATHS` — set automatically when Carthage framework dependencies are present
+  - `OTHER_LDFLAGS` — see `requiresObjCLinking`
+  - `TEST_TARGET_NAME` — for UI test targets
+  - `TEST_HOST` — for unit test targets targeting an application
+</ParamField>
+
+<ParamField path="dependencies" type="[Dependency]">
+  Dependencies for this target. See [Dependencies](#dependencies) below.
+</ParamField>
+
+<ParamField path="info" type="Plist">
+  When defined, generates an `Info.plist` file at the specified path and sets `INFOPLIST_FILE` for every configuration (unless already set). XcodeGen auto-generates several keys including `CFBundleIdentifier`, `CFBundleVersion`, and `CFBundlePackageType`.
+</ParamField>
+
+<ParamField path="entitlements" type="Plist">
+  When defined, generates an `.entitlements` file and sets `CODE_SIGN_ENTITLEMENTS` for every configuration. All keys must be provided manually.
+</ParamField>
+
+<ParamField path="templates" type="[String]">
+  A list of [Target Template](/reference/project-spec#target-templates) names to merge with this target. Templates are applied in order. Use `${target_name}` within a template to reference the final target name.
+</ParamField>
+
+<ParamField path="templateAttributes" type="[String: String]">
+  Attribute substitutions applied to any `templates` referenced by this target. Use `${attributeName}` in the template to reference these values.
+</ParamField>
+
+<ParamField path="transitivelyLinkDependencies" type="Bool">
+  When `true`, this target links to the dependencies of its target dependencies. Overrides `options.transitivelyLinkDependencies`.
+</ParamField>
+
+<ParamField path="directlyEmbedCarthageDependencies" type="Bool">
+  When `true`, Carthage framework dependencies are embedded via an `Embed Frameworks` build phase instead of the `copy-frameworks` script. Defaults to `true` for all targets except iOS/tvOS/watchOS applications.
+</ParamField>
+
+<ParamField path="requiresObjCLinking" type="Bool">
+  When `true`, targets that link to this target have `-ObjC` added to their `OTHER_LDFLAGS`. Required when a static library has Objective-C categories or extensions. Defaults to `true` for `library.static` targets.
+</ParamField>
+
+<ParamField path="onlyCopyFilesOnInstall" type="Bool">
+  When `true`, the `Embed Frameworks` and `Embed App Extensions` build phases have "Copy only when installing" checked. Defaults to `false`.
+</ParamField>
+
+<ParamField path="buildToolPlugins" type="[BuildToolPlugin]">
+  Build tool plug-ins that run automatically during the build. See [Build Tool Plug-ins](#build-tool-plug-ins) below.
+</ParamField>
+
+<ParamField path="preBuildScripts" type="[BuildScript]">
+  Build scripts that run before any other build phases.
+</ParamField>
+
+<ParamField path="postCompileScripts" type="[BuildScript]">
+  Build scripts that run after the Compile Sources phase.
+</ParamField>
+
+<ParamField path="postBuildScripts" type="[BuildScript]">
+  Build scripts that run after all other build phases.
+</ParamField>
+
+<ParamField path="buildRules" type="[BuildRule]">
+  Custom build rules for processing files.
+</ParamField>
+
+<ParamField path="scheme" type="TargetScheme">
+  A convenience for auto-generating schemes for this target based on config variants and included tests. See [Target Scheme](#target-scheme) below.
+</ParamField>
+
+<ParamField path="legacy" type="LegacyTarget">
+  When present, makes this an "External Build System" legacy target.
+</ParamField>
+
+<ParamField path="putResourcesBeforeSourcesBuildPhase" type="Bool">
+  When `true`, the Copy Resources build step is placed before the Compile Sources step.
+</ParamField>
+
+<ParamField path="attributes" type="[String: Any]">
+  Sets values in the project `TargetAttributes`. Merged with project-level attributes and XcodeGen's automatic values, with these values taking precedence.
+</ParamField>
+
+---
+
+## Sources
+
+A source can be a plain string (the path) or a `TargetSource` object. Applicable source files, resources, headers, and `.lproj` files are parsed automatically.
+
+<ParamField path="path" type="String" required>
+  The path to the source file or directory.
+</ParamField>
+
+<ParamField path="name" type="String">
+  Overrides the display name of the source in Xcode. Defaults to the last path component.
+</ParamField>
+
+<ParamField path="group" type="String">
+  Overrides the parent group in Xcode. Separate multiple levels with `/`. Sources that share a `group` are placed in the same parent group.
+</ParamField>
+
+<ParamField path="compilerFlags" type="[String] or String">
+  Compiler flags added to all files under this path. Can be a list or a space-delimited string.
+</ParamField>
+
+<ParamField path="excludes" type="[String]">
+  Glob patterns (relative to `path`) for files to exclude. Uses Bash 4's glob behaviour with globstar (`**`) enabled.
+</ParamField>
+
+<ParamField path="includes" type="[String]">
+  Glob patterns (relative to `path`) for files to include. When a file matches both `includes` and `excludes`, `excludes` takes precedence.
+</ParamField>
+
+<ParamField path="destinationFilters" type="[String]">
+  Platform destinations this source applies to. Defaults to all supported destinations.
+</ParamField>
+
+<ParamField path="inferDestinationFiltersByPath" type="Bool">
+  When `true`, automatically filters files by destination based on path patterns like `**/<destination>/*` or `*_<destination>.swift`. Ignored if `destinationFilters` is also set.
+</ParamField>
+
+<ParamField path="createIntermediateGroups" type="Bool">
+  Overrides `options.createIntermediateGroups` for this source.
+</ParamField>
+
+<ParamField path="optional" type="Bool">
+  Disables the missing path check. Defaults to `false`.
+</ParamField>
+
+<ParamField path="buildPhase" type="String or Object">
+  Manually assigns the build phase for files in this source. XcodeGen normally infers this from the file extension. `Info.plist` files are never added to a build phase regardless of this setting.
+
+  - `sources` — Compile Sources
+  - `resources` — Copy Bundle Resources
+  - `headers` — Headers
+  - `none` — no build phase
+  - `copyFiles` — Copy Files (requires `destination` and optional `subpath`)
+</ParamField>
+
+<ParamField path="type" type="String">
+  How to treat this source path in Xcode.
+
+  - `file` — a file reference with a parent group (default for files or directories with extensions)
+  - `group` — a group with all contained files (default for directories without extensions)
+  - `folder` — a folder reference
+  - `syncedFolder` — Xcode 16 synchronized folder (requires `projectFormat: xcode16_0`)
+</ParamField>
+
+<ParamField path="headerVisibility" type="String">
+  Visibility of headers in this source. Defaults to `public`. Options: `public`, `private`, `project`.
+</ParamField>
+
+<ParamField path="attributes" type="[String]">
+  Additional settings attributes applied to build files in this source.
+</ParamField>
+
+<ParamField path="resourceTags" type="[String]">
+  On Demand Resource Tags for resources in this source. Also added to the project's `knownAssetTags`.
+</ParamField>
+
+---
+
+## Dependencies
+
+Dependencies are a list of objects, each with one of these typed keys:
+
+<AccordionGroup>
+  <Accordion title="target — link to another target">
+    ```yaml
+    dependencies:
+      - target: MyFramework
+      - target: FooLib/FooTarget  # target in a project reference
+    ```
+  </Accordion>
+
+  <Accordion title="framework — link to a framework or XCFramework">
+    ```yaml
+    dependencies:
+      - framework: path/to/MyFramework.framework
+      - framework: path/to/MyLib.xcframework
+        implicit: true  # framework built in BUILT_PRODUCTS_DIR
+    ```
+  </Accordion>
+
+  <Accordion title="carthage — link to a Carthage framework">
+    ```yaml
+    dependencies:
+      - carthage: Alamofire
+      - carthage: Result
+        findFrameworks: false
+        linkType: static
+    ```
+
+    Frameworks are expected at `{carthageBuildPath}/{platform}/{name}.framework`. For static Carthage frameworks they are at `{carthageBuildPath}/{platform}/Static/{name}.framework`.
+  </Accordion>
+
+  <Accordion title="sdk — link to an SDK framework or library">
+    ```yaml
+    dependencies:
+      - sdk: Contacts.framework
+      - sdk: libc++.tbd
+      - sdk: Platforms/iPhoneOS.platform/Developer/Library/Frameworks/XCTest
+        root: DEVELOPER_DIR
+    ```
+  </Accordion>
+
+  <Accordion title="package — link to a Swift Package">
+    ```yaml
+    dependencies:
+      - package: Alamofire
+      - package: SwiftPM
+        product: SPMUtility          # single specific product
+      - package: FooFeature
+        products: [FooDomain, FooUI] # multiple products
+    ```
+  </Accordion>
+
+  <Accordion title="bundle — copy a pre-built bundle">
+    ```yaml
+    dependencies:
+      - bundle: MyResourceBundle
+    ```
+    Adds the named pre-built bundle to the Copy Resources phase. Only valid for target types that can copy resources.
+  </Accordion>
+</AccordionGroup>
+
+### Linking options
+
+All dependency types support these common options:
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `embed` | Bool | `true` for apps | Whether to embed the dependency |
+| `link` | Bool | `true` | Whether to link the dependency |
+| `codeSign` | Bool | `true` | Apply `codeSignOnCopy` when embedding |
+| `removeHeaders` | Bool | `true` | Apply `removeHeadersOnCopy` when embedding |
+| `weak` | Bool | `false` | Link as a weak framework |
+| `platformFilter` | String | `all` | Mac Catalyst filter: `iOS`, `macOS`, or `all` |
+| `destinationFilters` | [String] | all | Destinations this dependency applies to |
+| `platforms` | [Platform] | all | Platforms this dependency applies to |
+
+---
+
+## Plist
+
+Used for both `info` and `entitlements`.
+
+<ParamField path="path" type="String" required>
+  Path where the plist file will be written.
+</ParamField>
+
+<ParamField path="properties" type="[String: Any]" required>
+  Map of plist keys and values.
+</ParamField>
+
+```yaml
+targets:
+  App:
+    info:
+      path: App/Info.plist
+      properties:
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UILaunchStoryboardName: LaunchScreen
+    entitlements:
+      path: App/App.entitlements
+      properties:
+        com.apple.security.application-groups: group.com.app
+```
+
+---
+
+## Build Tool Plug-ins
+
+<ParamField path="plugin" type="String" required>
+  The name of the build tool plug-in.
+</ParamField>
+
+<ParamField path="package" type="String" required>
+  The name of the Swift package that contains the plug-in.
+</ParamField>
+
+```yaml
+packages:
+  MyPackage:
+    url: https://github.com/MyPackage
+    from: 1.3.0
+
+targets:
+  App:
+    buildToolPlugins:
+      - plugin: MyPlugin
+        package: MyPackage
+```
+
+---
+
+## Build Script
+
+Build scripts can be placed at three positions:
+
+- `preBuildScripts` — before any other build phases
+- `postCompileScripts` — after the Compile Sources phase
+- `postBuildScripts` — after all other build phases
+
+<ParamField path="path" type="String">
+  Path to a shell script file. Either `path` or `script` must be defined.
+</ParamField>
+
+<ParamField path="script" type="String">
+  Inline shell script. Either `path` or `script` must be defined.
+</ParamField>
+
+<ParamField path="name" type="String">
+  Display name for the script in Xcode. Defaults to `Run Script`.
+</ParamField>
+
+<ParamField path="inputFiles" type="[String]">
+  List of input files.
+</ParamField>
+
+<ParamField path="outputFiles" type="[String]">
+  List of output files.
+</ParamField>
+
+<ParamField path="inputFileLists" type="[String]">
+  List of input `.xcfilelist` paths.
+</ParamField>
+
+<ParamField path="outputFileLists" type="[String]">
+  List of output `.xcfilelist` paths.
+</ParamField>
+
+<ParamField path="shell" type="String">
+  Shell to use for the script. Defaults to `/bin/sh`.
+</ParamField>
+
+<ParamField path="showEnvVars" type="Bool">
+  Whether to print accessible environment variables to the build log. Defaults to `true`.
+</ParamField>
+
+<ParamField path="runOnlyWhenInstalling" type="Bool">
+  Only run the script during install builds (`runOnlyForDeploymentPostprocessing`). Defaults to `false`.
+</ParamField>
+
+<ParamField path="basedOnDependencyAnalysis" type="Bool">
+  Skip the script when inputs, context, and outputs haven't changed. Defaults to `true`.
+</ParamField>
+
+<ParamField path="discoveredDependencyFile" type="String">
+  Path to a discovered dependency `.d` file.
+</ParamField>
+
+```yaml
+targets:
+  MyTarget:
+    preBuildScripts:
+      - path: myscripts/my_script.sh
+        name: My Script
+        inputFiles:
+          - $(SRCROOT)/file1
+          - $(SRCROOT)/file2
+        outputFiles:
+          - $(DERIVED_FILE_DIR)/file1
+    postCompileScripts:
+      - script: swiftlint
+        name: SwiftLint
+    postBuildScripts:
+      - script: |
+          echo "Build complete"
+        name: Notify
+```
+
+---
+
+## Build Rule
+
+<ParamField path="filePattern" type="String">
+  A glob pattern for files to process. Either `filePattern` or `fileType` must be defined.
+</ParamField>
+
+<ParamField path="fileType" type="String">
+  An Xcode file type (e.g. `sourcecode.swift`, `file.xib`). Either `filePattern` or `fileType` must be defined.
+</ParamField>
+
+<ParamField path="script" type="String">
+  Script to run on each file. Either `script` or `compilerSpec` must be defined.
+</ParamField>
+
+<ParamField path="compilerSpec" type="String">
+  Reference to a built-in Apple tool. Either `script` or `compilerSpec` must be defined.
+</ParamField>
+
+<ParamField path="name" type="String">
+  Display name for the build rule. Defaults to `Build Rule`.
+</ParamField>
+
+<ParamField path="outputFiles" type="[String]">
+  List of output files produced by the rule.
+</ParamField>
+
+<ParamField path="outputFilesCompilerFlags" type="[String]">
+  Compiler flags to apply to the output files.
+</ParamField>
+
+<ParamField path="runOncePerArchitecture" type="Bool">
+  Whether the rule should run once per architecture. Defaults to `true`.
+</ParamField>
+
+---
+
+## Target Scheme
+
+A convenience for auto-generating schemes per target. For full scheme control use top-level `schemes`.
+
+<ParamField path="configVariants" type="[String]" required>
+  Generates a scheme for each entry, using build configs that contain the variant name. For example, `Staging` matches `Staging Debug` and `Staging Release`.
+</ParamField>
+
+<ParamField path="testTargets" type="[TestTarget]">
+  Test targets to include in the generated scheme.
+</ParamField>
+
+<ParamField path="gatherCoverageData" type="Bool">
+  Whether to gather code coverage data. Defaults to `false`.
+</ParamField>
+
+<ParamField path="coverageTargets" type="[String]">
+  Targets to gather code coverage for.
+</ParamField>
+
+<ParamField path="commandLineArguments" type="[String: Bool]">
+  Command line arguments added to the Test, Profile, and Run actions. The value indicates whether the argument is enabled.
+</ParamField>
+
+<ParamField path="environmentVariables" type="[EnvironmentVariable] or [String: String]">
+  Environment variables for Run, Test, and Profile actions.
+</ParamField>
+
+<ParamField path="testPlans" type="[TestPlan]">
+  Test plan file references for the scheme's test action.
+</ParamField>
+
+---
+
+## Examples
+
+<Tabs>
+  <Tab title="Application">
+    ```yaml
+    targets:
+      MyApp:
+        type: application
+        platform: iOS
+        deploymentTarget: "15.0"
+        sources:
+          - path: MyApp
+            excludes:
+              - "**/*.md"
+        dependencies:
+          - target: MyFramework
+          - package: Alamofire
+          - sdk: MessageUI.framework
+        settings:
+          base:
+            PRODUCT_BUNDLE_IDENTIFIER: com.mycompany.myapp
+            SWIFT_VERSION: "5.9"
+          configs:
+            debug:
+              CODE_SIGN_IDENTITY: "iPhone Developer"
+            release:
+              CODE_SIGN_IDENTITY: "iPhone Distribution"
+        info:
+          path: MyApp/Info.plist
+          properties:
+            UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        scheme:
+          configVariants: [Debug, Release]
+          testTargets:
+            - MyAppTests
+          gatherCoverageData: true
+    ```
+  </Tab>
+  <Tab title="Framework">
+    ```yaml
+    targets:
+      MyFramework:
+        type: framework
+        platform: [iOS, tvOS]
+        deploymentTarget:
+          iOS: "15.0"
+          tvOS: "15.0"
+        sources:
+          - path: MyFramework
+            compilerFlags: "-Werror"
+        settings:
+          base:
+            PRODUCT_NAME: MyFramework
+            PRODUCT_BUNDLE_IDENTIFIER: com.mycompany.myframework
+    ```
+  </Tab>
+  <Tab title="Test target">
+    ```yaml
+    targets:
+      MyAppTests:
+        type: bundle.unit-test
+        platform: iOS
+        sources: MyAppTests
+        dependencies:
+          - target: MyApp
+        settings:
+          base:
+            PRODUCT_BUNDLE_IDENTIFIER: com.mycompany.myapp.tests
+        scheme:
+          gatherCoverageData: true
+          coverageTargets:
+            - MyApp
+
+      MyAppUITests:
+        type: bundle.ui-testing
+        platform: iOS
+        sources: MyAppUITests
+        dependencies:
+          - target: MyApp
+    ```
+  </Tab>
+</Tabs>

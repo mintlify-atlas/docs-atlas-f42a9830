@@ -1,0 +1,186 @@
+---
+title: "Configuring schemes"
+description: "Auto-generate and customize Xcode schemes for different environments and configurations"
+---
+
+XcodeGen automatically generates one scheme per target. For more control — multiple environment variants, specific test targets, custom actions, or reusable templates — you can define schemes explicitly in `project.yml`.
+
+## Auto-generated schemes
+
+By default, every target gets a scheme with the target name. The scheme uses the first debug-type configuration for the run, test, and analyze actions, and the first release-type configuration for profile and archive.
+
+## Target Scheme
+
+The `scheme` property on a target is a shorthand for generating environment-variant schemes and linking test targets without defining a full top-level scheme. This is the most common way to configure schemes.
+
+```yaml
+configs:
+  Test Debug: debug
+  Staging Debug: debug
+  Production Debug: debug
+  Test Release: release
+  Staging Release: release
+  Production Release: release
+
+targets:
+  MyApp:
+    scheme:
+      testTargets:
+        - MyUnitTests
+      configVariants:
+        - Test
+        - Staging
+        - Production
+      gatherCoverageData: true
+      coverageTargets:
+        - MyApp
+      commandLineArguments:
+        "-MyEnabledArg": true
+        "-MyDisabledArg": false
+      environmentVariables:
+        MY_ENV_VAR: VALUE
+  MyUnitTests:
+    sources: Tests
+```
+
+The `configVariants` list generates one scheme per entry. Each scheme matches configurations containing that variant name (case-insensitive substring match), using debug configs for run/test/analyze and release configs for profile/archive. The above example produces:
+
+- `MyApp Test`
+- `MyApp Staging`
+- `MyApp Production`
+
+## Full Scheme Definition
+
+Use the top-level `schemes` key when you need full control over every action in a scheme.
+
+```yaml
+schemes:
+  Production:
+    build:
+      targets:
+        MyTarget1: all
+        MyTarget2: [run, archive]
+      parallelizeBuild: true
+      buildImplicitDependencies: true
+    run:
+      config: prod-debug
+      commandLineArguments:
+        "-MyEnabledArg": true
+        "-MyDisabledArg": false
+      environmentVariables:
+        RUN_ENV_VAR: VALUE
+    test:
+      config: prod-debug
+      gatherCoverageData: true
+      coverageTargets:
+        - MyTarget1
+      targets:
+        - Tester1
+        - name: Tester2
+          parallelizable: true
+          randomExecutionOrder: true
+          skippedTests: [Test/testExample()]
+      commandLineArguments:
+        "-MyEnabledArg": true
+      environmentVariables:
+        - variable: TEST_ENV_VAR
+          value: VALUE
+          isEnabled: false
+    profile:
+      config: prod-release
+    analyze:
+      config: prod-debug
+    archive:
+      config: prod-release
+      customArchiveName: MyApp
+      revealArchiveInOrganizer: false
+```
+
+### Build targets
+
+The `build.targets` map accepts a target name as the key and one of the following as the value:
+
+- `all` — enable for all build types
+- `none` — disable for all build types
+- An array of build types: `run`, `test`, `profile`, `analyze`, `archive`
+
+### Common action options
+
+The `run`, `test`, `profile`, `analyze`, and `archive` actions all share these properties:
+
+| Property | Description |
+|---|---|
+| `config` | The build configuration to use |
+| `preActions` | Scripts to run before the action |
+| `postActions` | Scripts to run after the action |
+| `commandLineArguments` | Map of argument to enabled state (`run`, `test`, `profile` only) |
+| `environmentVariables` | Environment variables (`run`, `test`, `profile` only) |
+
+### Pre/Post actions
+
+Execution actions run shell scripts before or after a build action:
+
+```yaml
+schemes:
+  MyApp:
+    build:
+      targets:
+        MyApp: all
+      preActions:
+        - script: echo "Starting build"
+          name: Log Build Start
+          settingsTarget: MyApp
+      postActions:
+        - script: |
+            echo "Build finished"
+            notify_slack.sh
+          name: Notify Slack
+```
+
+## Scheme Templates
+
+Use `schemeTemplates` to extract common scheme settings and reuse them across multiple schemes. Any `${scheme_name}` placeholder in a template is replaced with the referencing scheme's name.
+
+```yaml
+schemes:
+  MyModule:
+    templates:
+      - FeatureModuleScheme
+    templateAttributes:
+      testTargetName: MyModuleTests
+
+schemeTemplates:
+  FeatureModuleScheme:
+    templates:
+      - TestScheme
+    build:
+      targets:
+        ${scheme_name}: build
+
+  TestScheme:
+    test:
+      gatherCoverageData: true
+      targets:
+        - name: ${testTargetName}
+          parallelizable: true
+          randomExecutionOrder: true
+```
+
+This produces a `MyModule` scheme that builds `MyModule` and runs tests against `MyModuleTests`. Scheme templates are especially useful in modular apps where every module follows the same structure.
+
+## Test Plans
+
+Test plans are not generated by XcodeGen and must be created in Xcode first. Once created, reference them by path:
+
+```yaml
+schemes:
+  MyApp:
+    test:
+      testPlans:
+        - path: MyApp.xctestplan
+          defaultPlan: true
+```
+
+<Note>
+If test plan paths don't exist at generation time, XcodeGen will error. You can suppress this with `options.disabledValidations: [missingTestPlans]` while the plans are being set up.
+</Note>

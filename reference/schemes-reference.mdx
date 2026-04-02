@@ -1,0 +1,530 @@
+---
+title: "Schemes reference"
+description: "Define and customize Xcode schemes with build, run, test, profile, analyze, and archive actions"
+---
+
+Schemes in XcodeGen can be defined in two ways:
+
+- **Top-level `schemes`** — full control over every action
+- **Per-target `scheme`** shortcut — auto-generates schemes from config variants
+
+This page covers the full scheme definition. For the target shortcut, see [Target Scheme](#target-scheme).
+
+---
+
+## Scheme
+
+<ParamField path="build" type="Build" required>
+  Build action configuration. Defines which targets to build and for which actions.
+</ParamField>
+
+<ParamField path="run" type="RunAction">
+  The run (launch) action.
+</ParamField>
+
+<ParamField path="test" type="TestAction">
+  The test action.
+</ParamField>
+
+<ParamField path="profile" type="Action">
+  The profile action.
+</ParamField>
+
+<ParamField path="analyze" type="Action">
+  The analyze action.
+</ParamField>
+
+<ParamField path="archive" type="ArchiveAction">
+  The archive action.
+</ParamField>
+
+<ParamField path="management" type="SchemeManagement">
+  Scheme management metadata such as visibility and ordering.
+</ParamField>
+
+---
+
+## Build action
+
+<ParamField path="targets" type="[String: String] or [String: [String]]" required>
+  Map of target names to the build actions they are enabled for. Values can be `all`, `none`, or an array of action names:
+
+  - `run` or `running`
+  - `test` or `testing`
+  - `profile` or `profiling`
+  - `analyze` or `analyzing`
+  - `archive` or `archiving`
+
+  ```yaml
+  build:
+    targets:
+      MyTarget: all
+      FooLib/FooTarget: [test, run]
+  ```
+</ParamField>
+
+<ParamField path="parallelizeBuild" type="Bool">
+  Whether targets should be built in parallel. Defaults to `true`.
+</ParamField>
+
+<ParamField path="buildImplicitDependencies" type="Bool">
+  Whether Xcode should discover and build implicit dependencies. Defaults to `true`.
+</ParamField>
+
+<ParamField path="runPostActionsOnFailure" type="Bool">
+  Whether post scripts run even when the build fails. Defaults to `false`.
+</ParamField>
+
+---
+
+## Common action options
+
+These properties are shared across multiple actions (run, test, profile, analyze, archive).
+
+<ParamField path="config" type="String">
+  The build configuration to use. If not set, the first configuration of the appropriate type is used:
+  - `debug` — run, test, analyze
+  - `release` — profile, archive
+</ParamField>
+
+<ParamField path="commandLineArguments" type="[String: Bool]">
+  Map of command line argument names to whether they are enabled. Available on `run`, `test`, and `profile` actions.
+</ParamField>
+
+<ParamField path="preActions" type="[ExecutionAction]">
+  Scripts to run before this action.
+</ParamField>
+
+<ParamField path="postActions" type="[ExecutionAction]">
+  Scripts to run after this action.
+</ParamField>
+
+<ParamField path="environmentVariables" type="[EnvironmentVariable] or [String: String]">
+  Environment variables for the action. Available on `run`, `test`, and `profile`. When passing a dictionary, every key-value entry maps to an enabled environment variable.
+</ParamField>
+
+<ParamField path="enableGPUFrameCaptureMode" type="String">
+  GPU frame capture mode. Options: `autoEnabled`, `metal`, `openGL`, `disabled`. Defaults to `autoEnabled`.
+</ParamField>
+
+<ParamField path="enableGPUValidationMode" type="Bool">
+  Metal API Validation. Defaults to `true`.
+</ParamField>
+
+<ParamField path="disableMainThreadChecker" type="Bool">
+  Disable the Main Thread Checker. Available on `run` and `test`. Defaults to `false`.
+</ParamField>
+
+<ParamField path="stopOnEveryMainThreadCheckerIssue" type="Bool">
+  Stop at every Main Thread Checker issue. Defaults to `false`.
+</ParamField>
+
+<ParamField path="disableThreadPerformanceChecker" type="Bool">
+  Disable the Thread Performance Checker. Available on `run`. Defaults to `false`.
+</ParamField>
+
+<ParamField path="language" type="String">
+  Application Language override. Available on `run` and `test`.
+</ParamField>
+
+<ParamField path="region" type="String">
+  Application Region override. Available on `run` and `test`.
+</ParamField>
+
+<ParamField path="debugEnabled" type="Bool">
+  Whether the debugger should attach. Available on `run` and `test`. Defaults to `true`.
+</ParamField>
+
+<ParamField path="askForAppToLaunch" type="Bool">
+  Set the executable to ask to launch. Available on `run` and `profile`. Defaults to `false`.
+</ParamField>
+
+<ParamField path="macroExpansion" type="String">
+  Target name for macro expansion. Available on `run` and `test`. Defaults to `nil`.
+</ParamField>
+
+---
+
+## Run action
+
+<ParamField path="executable" type="String">
+  The target to launch. Defaults to the first runnable build target in the scheme.
+</ParamField>
+
+<ParamField path="enableAddressSanitizer" type="Bool">
+  Enable Address Sanitizer. Defaults to `false`.
+</ParamField>
+
+<ParamField path="enableASanStackUseAfterReturn" type="Bool">
+  Enable ASan stack-use-after-return detection. Defaults to `false`.
+</ParamField>
+
+<ParamField path="enableThreadSanitizer" type="Bool">
+  Enable Thread Sanitizer. Defaults to `false`.
+</ParamField>
+
+<ParamField path="enableUBSanitizer" type="Bool">
+  Enable Undefined Behavior Sanitizer. Defaults to `false`.
+</ParamField>
+
+<ParamField path="customLLDBInit" type="String">
+  Absolute path to a custom `.lldbinit` file.
+</ParamField>
+
+<ParamField path="customWorkingDirectory" type="String">
+  Path to use as the working directory when launching the executable.
+</ParamField>
+
+<ParamField path="simulateLocation" type="SimulateLocation">
+  Simulated location configuration. See [Simulate Location](#simulate-location) below.
+</ParamField>
+
+<ParamField path="launchAutomaticallySubstyle" type="String">
+  Launch substyle. Use `"2"` for extensions.
+</ParamField>
+
+<ParamField path="storeKitConfiguration" type="String">
+  Path to a StoreKit configuration file to use during run.
+</ParamField>
+
+---
+
+## Test action
+
+<ParamField path="targets" type="[TestTarget]">
+  List of test targets. Each entry can be a plain string or a [Test Target](#test-target) object.
+</ParamField>
+
+<ParamField path="gatherCoverageData" type="Bool">
+  Whether to gather code coverage data. Defaults to `false`.
+</ParamField>
+
+<ParamField path="coverageTargets" type="[String or TestableTargetReference]">
+  Targets to gather code coverage for. Each entry can be a string, a Project Reference string, or a `TestableTargetReference` object.
+</ParamField>
+
+<ParamField path="customLLDBInit" type="String">
+  Absolute path to a custom `.lldbinit` file.
+</ParamField>
+
+<ParamField path="captureScreenshotsAutomatically" type="Bool">
+  Capture screenshots automatically during UI testing. Defaults to `true`.
+</ParamField>
+
+<ParamField path="deleteScreenshotsWhenEachTestSucceeds" type="Bool">
+  Delete screenshots when a UI test succeeds. Only effective when `captureScreenshotsAutomatically` is `true`. Defaults to `true`.
+</ParamField>
+
+<ParamField path="testPlans" type="[TestPlan]">
+  Test plan file references. Test plans must be created in Xcode first.
+</ParamField>
+
+<ParamField path="preferredScreenCaptureFormat" type="String">
+  Screen capture format for UI testing. Options: `screenshots`, `screenRecording`. Defaults to `screenRecording`.
+</ParamField>
+
+<ParamField path="enableAddressSanitizer" type="Bool">
+  Enable Address Sanitizer during testing. Defaults to `false`.
+</ParamField>
+
+<ParamField path="enableASanStackUseAfterReturn" type="Bool">
+  Enable ASan stack-use-after-return detection during testing. Defaults to `false`.
+</ParamField>
+
+<ParamField path="enableThreadSanitizer" type="Bool">
+  Enable Thread Sanitizer during testing. Defaults to `false`.
+</ParamField>
+
+<ParamField path="enableUBSanitizer" type="Bool">
+  Enable Undefined Behavior Sanitizer during testing. Defaults to `false`.
+</ParamField>
+
+### Test Target
+
+Each entry in `test.targets` can be:
+- A plain **string** (target name)
+- An object with a `name` key
+- A `TestableTargetReference` object (or object with a `target` key)
+
+Additional parameters per test target:
+
+<ParamField path="parallelizable" type="Bool">
+  Run tests in parallel. Defaults to `false`.
+</ParamField>
+
+<ParamField path="randomExecutionOrder" type="Bool">
+  Run tests in a random order. Defaults to `false`.
+</ParamField>
+
+<ParamField path="skipped" type="Bool">
+  Skip all tests in this target. Defaults to `false`.
+</ParamField>
+
+<ParamField path="skippedTests" type="[String]">
+  List of specific tests to skip. Defaults to empty.
+</ParamField>
+
+<ParamField path="selectedTests" type="[String]">
+  Whitelist of specific tests to run. Overrides `skippedTests` if provided.
+</ParamField>
+
+### Testable Target Reference
+
+Targets can be referenced in three ways:
+- `local: {target-name}` — a target in the local project
+- `package: {package-name}/{target-name}` — a target in a local Swift package
+- `project: {project-reference-name}/{target-name}` — a target in a referenced project
+
+---
+
+## Archive action
+
+<ParamField path="customArchiveName" type="String">
+  A custom name for the archive.
+</ParamField>
+
+<ParamField path="revealArchiveInOrganizer" type="Bool">
+  Whether to reveal the archive in Xcode's Organizer after it finishes building.
+</ParamField>
+
+---
+
+## Execution Action
+
+Used in `preActions` and `postActions` on any action.
+
+<ParamField path="script" type="String" required>
+  Inline shell script to execute.
+</ParamField>
+
+<ParamField path="name" type="String">
+  Display name of the script. Defaults to `Run Script`.
+</ParamField>
+
+<ParamField path="shell" type="String">
+  Shell to use for the script. Defaults to `/bin/sh`.
+</ParamField>
+
+<ParamField path="settingsTarget" type="String">
+  Name of a build or test target whose settings will be available as environment variables in the script.
+</ParamField>
+
+---
+
+## Simulate Location
+
+<ParamField path="allow" type="Bool" required>
+  Enable location simulation.
+</ParamField>
+
+<ParamField path="defaultLocation" type="String">
+  The simulated location. Can be a predefined city name or a relative path to a `.gpx` file.
+
+  Predefined values: `London, England`, `Johannesburg, South Africa`, `Moscow, Russia`, `Mumbai, India`, `Tokyo, Japan`, `Sydney, Australia`, `Hong Kong, China`, `Honolulu, HI, USA`, `San Francisco, CA, USA`, `Mexico City, Mexico`, `New York, NY, USA`, `Rio de Janeiro, Brazil`
+
+  For a custom GPX file, also add it to `fileGroups` so Xcode can access it.
+</ParamField>
+
+---
+
+## Environment Variable
+
+<ParamField path="variable" type="String" required>
+  The variable name.
+</ParamField>
+
+<ParamField path="value" type="String" required>
+  The variable value.
+</ParamField>
+
+<ParamField path="isEnabled" type="Bool">
+  Whether the variable is enabled. Defaults to `true`.
+</ParamField>
+
+---
+
+## Scheme Management
+
+<ParamField path="shared" type="Bool">
+  Whether the scheme is shared (visible to all users, stored in `xcshareddata`).
+</ParamField>
+
+<ParamField path="orderHint" type="Int">
+  Hint used by Xcode to sort schemes in the scheme list.
+</ParamField>
+
+<ParamField path="isShown" type="Bool">
+  Whether the scheme is shown in the scheme list.
+</ParamField>
+
+---
+
+## Test Plan
+
+Test plans are not generated by XcodeGen — they must be created in Xcode and checked in, then referenced by path.
+
+<ParamField path="path" type="String" required>
+  Path to the `.xctestplan` file.
+</ParamField>
+
+<ParamField path="defaultPlan" type="Bool">
+  Whether this is the default test plan. Defaults to `false`. If no plan has `defaultPlan: true`, the first plan in the list is used as default.
+</ParamField>
+
+---
+
+## Target Scheme
+
+A per-target convenience that auto-generates schemes based on config variants.
+
+<ParamField path="configVariants" type="[String]" required>
+  Generates one scheme per entry. Each scheme uses configurations that contain the variant name. For example, `Staging` matches configs `Staging Debug` and `Staging Release`.
+</ParamField>
+
+<ParamField path="testTargets" type="[TestTarget]">
+  Test targets included in the generated schemes.
+</ParamField>
+
+<ParamField path="gatherCoverageData" type="Bool">
+  Gather code coverage data. Defaults to `false`.
+</ParamField>
+
+<ParamField path="coverageTargets" type="[String]">
+  Targets to gather code coverage for.
+</ParamField>
+
+<ParamField path="disableMainThreadChecker" type="Bool">
+  Disable the Main Thread Checker. Defaults to `false`.
+</ParamField>
+
+<ParamField path="buildImplicitDependencies" type="Bool">
+  Build implicit dependencies. Defaults to `true`.
+</ParamField>
+
+<ParamField path="language" type="String">
+  Application Language override.
+</ParamField>
+
+<ParamField path="region" type="String">
+  Application Region override.
+</ParamField>
+
+<ParamField path="commandLineArguments" type="[String: Bool]">
+  Arguments added to Test, Profile, and Run actions.
+</ParamField>
+
+<ParamField path="environmentVariables" type="[EnvironmentVariable] or [String: String]">
+  Environment variables for Run, Test, and Profile actions.
+</ParamField>
+
+<ParamField path="testPlans" type="[TestPlan]">
+  Test plan references for the scheme's test action.
+</ParamField>
+
+<ParamField path="preActions" type="[ExecutionAction]">
+  Scripts to run before the build action.
+</ParamField>
+
+<ParamField path="postActions" type="[ExecutionAction]">
+  Scripts to run after the build action.
+</ParamField>
+
+<ParamField path="management" type="SchemeManagement">
+  Management options for the generated schemes.
+</ParamField>
+
+<ParamField path="storeKitConfiguration" type="String">
+  StoreKit configuration file to use during run.
+</ParamField>
+
+---
+
+## Scheme Templates
+
+Scheme templates extract common scheme settings that can be applied to multiple schemes via a `templates` property. `${scheme_name}` is replaced with the final scheme name. `${attributeName}` is replaced by values in `templateAttributes`.
+
+```yaml
+schemeTemplates:
+  FeatureModuleScheme:
+    templates:
+      - TestScheme
+    build:
+      targets:
+        ${scheme_name}: build
+
+  TestScheme:
+    test:
+      gatherCoverageData: true
+      targets:
+        - name: ${testTargetName}
+          parallelizable: true
+          randomExecutionOrder: true
+
+schemes:
+  MyModule:
+    templates:
+      - FeatureModuleScheme
+    templateAttributes:
+      testTargetName: MyModuleTests
+```
+
+---
+
+## Complete example
+
+```yaml
+schemes:
+  Production:
+    build:
+      targets:
+        MyTarget1: all
+        MyTarget2: [run, archive]
+      parallelizeBuild: true
+      buildImplicitDependencies: true
+    run:
+      config: prod-debug
+      commandLineArguments:
+        "-MyEnabledArg": true
+        "-MyDisabledArg": false
+      environmentVariables:
+        RUN_ENV_VAR: VALUE
+      simulateLocation:
+        allow: true
+        defaultLocation: San Francisco, CA, USA
+      preActions:
+        - script: echo "Starting run"
+          name: Pre-run script
+          settingsTarget: MyTarget1
+    test:
+      config: prod-debug
+      gatherCoverageData: true
+      coverageTargets:
+        - MyTarget1
+        - package: LocalPackage/TestTarget
+      targets:
+        - Tester1
+        - name: Tester2
+          parallelizable: true
+          randomExecutionOrder: true
+          skippedTests: [Test/testExample()]
+        - package: APIClient/APIClientTests
+          parallelizable: true
+      environmentVariables:
+        - variable: TEST_ENV_VAR
+          value: VALUE
+          isEnabled: false
+      testPlans:
+        - path: Tests/app.xctestplan
+          defaultPlan: true
+    profile:
+      config: prod-release
+    analyze:
+      config: prod-debug
+    archive:
+      config: prod-release
+      customArchiveName: MyTarget
+      revealArchiveInOrganizer: true
+    management:
+      shared: true
+      orderHint: 1
+```

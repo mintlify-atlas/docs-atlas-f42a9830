@@ -1,0 +1,213 @@
+---
+title: "CLI commands"
+description: "Complete reference for all XcodeGen commands and flags: generate, dump, cache"
+---
+
+XcodeGen provides three commands: `generate`, `dump`, and `cache`. All commands share a common set of base flags inherited from `ProjectCommand`.
+
+## Shared flags
+
+These flags are available on every command.
+
+<ParamField path="--spec" type="String">
+  The path to the project spec file. Defaults to `project.yml` in the current directory. You can link to multiple spec files by comma-separating them. All other flags apply to each spec in the list.
+
+  Short form: `-s`
+</ParamField>
+
+<ParamField path="--project-root" type="String">
+  The path to the project root directory. Defaults to the directory containing the project spec.
+
+  Short form: `-r`
+</ParamField>
+
+<ParamField path="--quiet" type="Bool">
+  Suppress all informational and success output. Error output is still shown.
+
+  Short form: `-q`
+</ParamField>
+
+<ParamField path="--no-env" type="Bool">
+  Disable environment variable expansions in the spec file. When set, `${SOME_VARIABLE}` references in the spec are left as-is.
+
+  Short form: `-n`
+</ParamField>
+
+---
+
+## xcodegen generate
+
+Generates an Xcode project from a spec file.
+
+```bash
+xcodegen generate [flags]
+```
+
+<ParamField path="--spec" type="String">
+  Path to the project spec file. Defaults to `project.yml`.
+
+  Short form: `-s`
+</ParamField>
+
+<ParamField path="--project" type="String">
+  The path to the directory where the project should be generated. Defaults to the directory the spec is in. The filename is defined by the `name` property in the project spec.
+
+  Short form: `-p`
+</ParamField>
+
+<ParamField path="--use-cache" type="Bool">
+  Use a cache for the XcodeGen spec. Prevents regenerating the project if nothing has changed since the last run. The cache is stored at `~/.xcodegen/cache/{SPEC_PATH_HASH}` by default.
+
+  Short form: `-c`
+</ParamField>
+
+<ParamField path="--cache-path" type="String">
+  Custom path where the cache file will be loaded from and saved to. Defaults to `~/.xcodegen/cache/{SPEC_PATH_HASH}`. Setting this flag also enables caching without needing `--use-cache`.
+</ParamField>
+
+<ParamField path="--only-plists" type="Bool">
+  Generate only plist files (Info.plist, entitlements, etc.) without generating the full `.xcodeproj`. Useful when only plist content has changed.
+</ParamField>
+
+<ParamField path="--quiet" type="Bool">
+  Suppress all informational and success output.
+
+  Short form: `-q`
+</ParamField>
+
+### Examples
+
+```bash
+# Generate using default project.yml in the current directory
+xcodegen generate
+
+# Generate from a custom spec path
+xcodegen generate --spec path/to/project.yml
+
+# Generate the project into a specific output directory
+xcodegen generate --project ../Build
+
+# Use caching to skip generation if nothing changed
+xcodegen generate --use-cache
+
+# Use a custom cache path
+xcodegen generate --use-cache --cache-path .build/xcodegen-cache
+
+# Only generate plist files
+xcodegen generate --only-plists
+
+# Generate from multiple specs (same flags apply to all)
+xcodegen generate --spec App.yml,Framework.yml
+```
+
+<Note>
+  If a `preGenCommand` is defined in your spec's `options`, it runs before cache evaluation and project generation — it always runs, even on a cache hit. If a `postGenCommand` is defined, it runs after successful project generation and is skipped when the cache indicates nothing has changed.
+</Note>
+
+---
+
+## xcodegen dump
+
+Dumps the resolved project spec to stdout or a file. The "parsed" types parse the raw YAML/JSON into the XcodeGen project model and then serialize it back, which can reveal how XcodeGen interprets your spec.
+
+```bash
+xcodegen dump [flags]
+```
+
+<ParamField path="--spec" type="String">
+  Path to the project spec file. Defaults to `project.yml`.
+
+  Short form: `-s`
+</ParamField>
+
+<ParamField path="--type" type="String">
+  The type of dump to output. Defaults to `yaml`.
+
+  Short form: `-t`
+
+  Available values:
+
+  | Value | Description |
+  |---|---|
+  | `yaml` | Raw spec as YAML (default) |
+  | `json` | Raw spec as JSON |
+  | `swift-dump` | Swift `dump()` representation of the parsed project model |
+  | `parsed-json` | Project model serialized back to JSON |
+  | `parsed-yaml` | Project model serialized back to YAML |
+  | `summary` | Human-readable debug summary of the project |
+</ParamField>
+
+<ParamField path="--file" type="String">
+  Path to a file to write the output to. If not supplied, output goes to stdout.
+
+  Short form: `-f`
+</ParamField>
+
+### Examples
+
+```bash
+# Dump resolved spec as YAML to stdout (default)
+xcodegen dump
+
+# Dump as JSON
+xcodegen dump --type json
+
+# Dump as Swift dump representation
+xcodegen dump --type swift-dump
+
+# Dump the parsed YAML (shows how XcodeGen sees your spec after parsing)
+xcodegen dump --type parsed-yaml
+
+# Dump to a file instead of stdout
+xcodegen dump --type json --file resolved-spec.json
+
+# Dump summary of the project
+xcodegen dump --type summary
+```
+
+<Tip>
+  Use `parsed-yaml` or `parsed-json` to debug how XcodeGen interprets your spec, including the effect of `include` merges and template expansions.
+</Tip>
+
+---
+
+## xcodegen cache
+
+Writes the project cache without generating the project. This is useful for pre-warming the cache in CI pipelines so that subsequent `generate --use-cache` calls can skip unnecessary regeneration.
+
+```bash
+xcodegen cache [flags]
+```
+
+<ParamField path="--spec" type="String">
+  Path to the project spec file. Defaults to `project.yml`.
+
+  Short form: `-s`
+</ParamField>
+
+<ParamField path="--cache-path" type="String">
+  Custom path where the cache file will be saved. Defaults to `~/.xcodegen/cache/{SPEC_PATH_HASH}`.
+</ParamField>
+
+<ParamField path="--quiet" type="Bool">
+  Suppress all informational and success output.
+
+  Short form: `-q`
+</ParamField>
+
+### Examples
+
+```bash
+# Write the cache using the default path
+xcodegen cache
+
+# Write the cache to a custom path
+xcodegen cache --cache-path .build/xcodegen-cache
+
+# Write cache for a custom spec
+xcodegen cache --spec MyApp.yml
+```
+
+<Note>
+  The cache path used with `xcodegen cache` must match the `--cache-path` used with `xcodegen generate --use-cache` for the cache hit to work.
+</Note>

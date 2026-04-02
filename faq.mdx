@@ -1,0 +1,128 @@
+---
+title: "FAQ"
+description: "Frequently asked questions about XcodeGen"
+---
+
+<AccordionGroup>
+  <Accordion title="Can I still check in my project?">
+    Absolutely. You will get the most out of XcodeGen by adding your project to your `.gitignore`, as this way you avoid merge conflicts. But you can also check it in as a halfway step.
+
+    <Note>
+      You can run `xcodegen` as a step in your build process on CI so the project file is always generated fresh.
+    </Note>
+  </Accordion>
+
+  <Accordion title="What happens when I switch branches?">
+    If files were added or removed in the new checkout you will most likely need to run `xcodegen` again so that your project will reference all your files.
+
+    It's recommended to set up [git hooks](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks) to automate the process:
+
+    - Run `xcodegen generate --use-cache` on the following hooks to keep the project up to date when checking out, merging, and rebasing:
+      - `post-checkout`
+      - `post-rewrite`
+      - `post-merge`
+    - Run `xcodegen cache` on `pre-commit` to update the cache whenever you make local changes or amend a commit that added a new file.
+  </Accordion>
+
+  <Accordion title="Can I use CocoaPods?">
+    Yes, you will just need to run `pod install` after the project is generated to integrate CocoaPods changes.
+
+    It's recommended to use a combination of `--use-cache` and the `postGenCommand` option, which will only generate the project if required, and then only run `pod install` if the project has been regenerated.
+
+    ```yaml
+    options:
+      postGenCommand: pod install
+    ```
+  </Accordion>
+
+  <Accordion title="Can I use Crashlytics?">
+    Yes, but you need to use a small workaround when using CocoaPods. Add this script in your `Podfile`:
+
+    ```ruby
+    # Your dependencies
+    pod 'Firebase/Crashlytics'
+
+    script_phase name: 'Run Firebase Crashlytics',
+                 shell_path: '/bin/sh',
+                 script: '"${PODS_ROOT}/FirebaseCrashlytics/run"',
+                 input_files: ['$(SRCROOT)/$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)']
+    ```
+
+    This script will be added after `[CP] Embed Pods Frameworks`.
+  </Accordion>
+
+  <Accordion title="How do I set up code signing?">
+    There are no special options for code signing in XcodeGen — it must be configured via regular build settings. For code signing to work, you need to tell Xcode which development team to use by setting the `DEVELOPMENT_TEAM` and possibly `CODE_SIGN_STYLE` build settings.
+
+    ```yaml
+    targets:
+      MyApp:
+        type: application
+        platform: iOS
+        settings:
+          base:
+            DEVELOPMENT_TEAM: XXXXXXXXXX
+            CODE_SIGN_STYLE: Automatic
+    ```
+
+    You can also place these settings in a shared config file and reference it with `configFiles` to keep them out of source control.
+  </Accordion>
+
+  <Accordion title="How do I specify a minimum XcodeGen version?">
+    Use the `options.minimumXcodeGenVersion` field in your spec to enforce that anyone generating the project is using a compatible version of XcodeGen. If someone runs an older version, XcodeGen will exit with an error.
+
+    ```yaml
+    name: MyProject
+    options:
+      minimumXcodeGenVersion: "2.38.0"
+    ```
+  </Accordion>
+
+  <Accordion title="How do I split my spec into multiple files?">
+    Use the `include` directive to compose your spec from multiple YAML files. Paths are relative to the file containing the `include`.
+
+    ```yaml
+    # project.yml
+    name: MyProject
+    include:
+      - path: targets/app.yml
+      - path: targets/framework.yml
+      - path: settings/base.yml
+    ```
+
+    Each included file is merged into the parent spec. This is useful for keeping targets, settings, and schemes organized in separate files, and for sharing common configuration across projects.
+  </Accordion>
+
+  <Accordion title="How do I use environment variables in my spec?">
+    Reference environment variables anywhere in your spec using the `${VARIABLE_NAME}` syntax. XcodeGen will substitute them at generation time.
+
+    ```yaml
+    name: MyProject
+    options:
+      bundleIdPrefix: com.${COMPANY_NAME}
+    targets:
+      MyApp:
+        type: application
+        platform: iOS
+        settings:
+          base:
+            DEVELOPMENT_TEAM: ${DEVELOPMENT_TEAM}
+    ```
+
+    <Tip>
+      This is particularly useful in CI environments where secrets like `DEVELOPMENT_TEAM` should not be committed to source control.
+    </Tip>
+  </Accordion>
+
+  <Accordion title="How do I prevent empty directories from being excluded?">
+    By default, XcodeGen excludes empty groups from the generated project. Set `options.generateEmptyDirectories` to `true` to include them instead.
+
+    ```yaml
+    name: MyProject
+    options:
+      generateEmptyDirectories: true
+    ```
+
+    This is helpful when you have placeholder directories that will be populated later, or when your directory structure needs to be preserved for scripts and tooling.
+  </Accordion>
+</AccordionGroup>
